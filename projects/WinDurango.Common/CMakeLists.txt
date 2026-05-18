@@ -6,6 +6,16 @@ include(FetchContent)
 set(VERSION_SUFFIX "-dev.5") # used for non-stable versions, otherwise blank
 set(CMAKE_CXX_STANDARD 20)
 
+include(FetchContent)
+
+FetchContent_Declare(
+  imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_TAG docking
+)
+
+FetchContent_MakeAvailable(imgui)
+
 add_compile_definitions(WD_API_EXPORTS)
 
 set(FILES
@@ -17,6 +27,13 @@ set(FILES
     src/WinDurango.cpp
     src/Config.cpp
     src/Logging.cpp
+    src/GUI.cpp
+    thirdparty/imgui_impl_uwp.cpp
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
 )
 
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
@@ -29,6 +46,8 @@ add_library(WinDurango.Common SHARED ${FILES})
 target_include_directories(WinDurango.Common PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.Common/>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/thirdparty>
+    ${imgui_SOURCE_DIR}
 )
 
 target_link_libraries(WinDurango.Common PUBLIC nlohmann_json::nlohmann_json spdlog::spdlog)

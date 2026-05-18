@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 #include "kernelx.h"
 #include <Windows.h>
 #include <thread>
@@ -150,11 +149,103 @@ typedef enum LOGAN_COMMAND_TYPE
     LOGAN_COMMAND_TYPE_ASP_8 = LOGAN_COMMAND_OFFSET_ASP + 0x8,
 } LOGAN_COMMAND_TYPE, *PLOGAN_COMMAND_TYPE;
 
+typedef enum ACP_COMMAND_TYPE_INTERNAL
+{
+  INTERNAL_ACP_COMMAND_TYPE_CONNECT = -2147483648,
+  INTERNAL_ACP_COMMAND_TYPE_DISCONNECT = -2147483647,
+  INTERNAL_ACP_COMMAND_TYPE_REGISTER_CONTEXT_ARRAYS = -2147483646,
+  INTERNAL_ACP_COMMAND_TYPE_EVENT_LOG_INIT = -2147483645,
+  INTERNAL_ACP_COMMAND_TYPE_EVENT_LOG_ENABLE = -2147483644,
+  INTERNAL_ACP_COMMAND_TYPE_EVENT_LOG_DISABLE = -2147483643,
+  INTERNAL_ACP_COMMAND_TYPE_TERMINATE = -2147483642
+} ACP_COMMAND_TYPE_INTERNAL, *PACP_COMMAND_TYPE_INTERNAL;
+
+typedef enum ACP_COMMAND_TYPE
+{
+  ACP_COMMAND_TYPE_LOAD_SHAPE_FLOWGRAPH = 0x0001,
+  ACP_COMMAND_TYPE_REGISTER_MESSAGE = 0x0002,
+  ACP_COMMAND_TYPE_UNREGISTER_MESSAGE = 0x0003,
+  ACP_COMMAND_TYPE_START_FLOWGRAPH = 0x0004,
+  ACP_COMMAND_TYPE_ENABLE_XMA_CONTEXT = 0x0005,
+  ACP_COMMAND_TYPE_ENABLE_XMA_CONTEXTS = 0x0006,
+  ACP_COMMAND_TYPE_DISABLE_XMA_CONTEXT = 0x0007,
+  ACP_COMMAND_TYPE_DISABLE_XMA_CONTEXTS = 0x0008,
+  ACP_COMMAND_TYPE_UPDATE_SRC_CONTEXT = 0x0009,
+  ACP_COMMAND_TYPE_UPDATE_EQCOMP_CONTEXT = 0x000a,
+  ACP_COMMAND_TYPE_UPDATE_FILTVOL_CONTEXT = 0x000b,
+  ACP_COMMAND_TYPE_UPDATE_DMA_CONTEXT = 0x000c,
+  ACP_COMMAND_TYPE_UPDATE_PCM_CONTEXT = 0x000d,
+  ACP_COMMAND_TYPE_UPDATE_XMA_CONTEXT = 0x000e,
+  ACP_COMMAND_TYPE_INCREMENT_DMA_WRITE_POINTER = 0x000f,
+  ACP_COMMAND_TYPE_INCREMENT_DMA_READ_POINTER = 0x0010,
+  ACP_COMMAND_TYPE_INCREMENT_PCM_WRITE_POINTER = 0x0011,
+  ACP_COMMAND_TYPE_INCREMENT_XMA_WRITE_BUFFER_OFFSET_READ = 0x0012,
+  ACP_COMMAND_TYPE_UPDATE_XMA_READ_BUFFER = 0x0013,
+  ACP_COMMAND_TYPE_UPDATE_ALL_CONTEXTS = 0x0014,
+  ACP_COMMAND_TYPE_UPDATE_SRC_CONTEXTS = 0x0015,
+  ACP_COMMAND_TYPE_UPDATE_EQCOMP_CONTEXTS = 0x0016,
+  ACP_COMMAND_TYPE_UPDATE_FILTVOL_CONTEXTS = 0x0017,
+  ACP_COMMAND_TYPE_UPDATE_DMA_READ_CONTEXTS = 0x0018,
+  ACP_COMMAND_TYPE_UPDATE_DMA_WRITE_CONTEXTS = 0x0019,
+  ACP_COMMAND_TYPE_UPDATE_PCM_CONTEXTS = 0x001a,
+  ACP_COMMAND_TYPE_UPDATE_XMA_CONTEXTS = 0x001b,
+  ACP_COMMAND_TYPE_COUNT = 0x001b
+} ACP_COMMAND_TYPE, *PACP_COMMAND_TYPE;
+
+typedef struct ACP_COMMAND_CONNECT
+{
+    UINT32 instance;
+    UINT32 index;
+    UINT32 numCommands;
+    UINT32 numMessages;
+    APU_ADDRESS commandQueue;
+    APU_ADDRESS pendingCommandList;
+    APU_ADDRESS messageQueue;
+};
+
+typedef struct ACP_COMMAND_DISCONNECT
+{
+    UINT32 instance;
+};
+
+typedef struct ACP_COMMAND_INIT_EVENT_LOG
+{
+    UINT32 buffer;
+    UINT32 bufferSize;
+};
+
+typedef struct ACP_COMMAND_REGISTER_CONTEXT_ARRAYS
+{
+    UINT32 numSrcContexts;
+    UINT32 numEqCompContexts;
+    UINT32 numFiltVolContexts;
+    UINT32 numDmaContexts;
+    UINT32 numXmaContexts;
+    UINT32 numPcmContexts;
+    APU_ADDRESS srcContextArray;
+    APU_ADDRESS eqCompContextArray;
+    APU_ADDRESS filtVolContextArray;
+    APU_ADDRESS dmaContextArray;
+    APU_ADDRESS xmaContextArray;
+    APU_ADDRESS pcmContextArray;
+};
+
+typedef struct AcpState
+{
+    uint32_t internalCommandQueueReadPointer;
+    uint32_t internalCommandQueueSendCounter;
+    uint32_t internalCommandQueueReadCounter;
+    uint32_t clientCommandQueueReadPointer[4];
+    uint32_t clientCommandQueueSendCounter[4];
+    uint32_t clientCommandQueueReadCounter[4];
+    uint32_t clientMessageQueueWritePointer[4];
+};
+
 typedef struct _LOGAN_COMMAND_ACP_INIT
 {
     UINT32 unknown0;             // Always '1'
     APU_ADDRESS acpCommandQueue; // Physical address of the ACP internal command queue
-    APU_ADDRESS unknown1;        // 76 bytes of data, zeroed
+    APU_ADDRESS acpState;        // Store the command queue read/write addresses
     UINT32 unknown2[2];
 } LOGAN_COMMAND_ACP_INIT, *PLOGAN_COMMAND_ACP_INIT;
 
@@ -223,6 +314,184 @@ typedef struct _LOGAN_IOCTL_OUT_GET_DRIVER_MEMORY
     UINT32 reserved[2];
 } LOGAN_IOCTL_OUT_GET_DRIVER_MEMORY, *PLOGAN_IOCTL_OUT_GET_DRIVER_MEMORY;
 
+typedef struct ACP_COMMAND_INCREMENT_PCM_WRITE_POINTER
+{
+    uint32_t contextIndex;
+    uint32_t increment;
+};
+
+typedef struct ACP_COMMAND_ENABLE_OR_DISABLE_XMA_CONTEXTS
+{
+    uint32_t context[16];
+};
+
+typedef struct ACP_COMMAND_INCREMENT_DMA_POINTER
+{
+    uint32_t contextIndex;
+    uint32_t increment;
+};
+
+typedef struct ACP_COMMAND_UPDATE_CONTEXTS
+{
+    uint32_t entryCount;
+    uint32_t entries;
+    uint32_t indexCount;
+    uint32_t indices;
+};
+
+typedef struct ACP_COMMAND_INCREMENT_XMA_WRITE_BUFFER_OFFSET_READ
+{
+    uint32_t contextIndex;
+    uint32_t increment;
+};
+
+typedef struct ACP_COMMAND_UPDATE_SRC_CONTEXT
+{
+    uint32_t contextIndex;
+    uint32_t updateMask;
+    uint32_t contextData;
+};
+
+typedef struct ACP_COMMAND_ENABLE_OR_DISABLE_XMA_CONTEXT
+{
+    uint32_t contextIndex;
+};
+
+typedef struct ACP_COMMAND_UPDATE_PCM_CONTEXT
+{
+    uint32_t contextIndex;
+    uint32_t updateMask;
+    uint32_t contextData;
+};
+
+typedef struct ACP_COMMAND_UPDATE_XMA_CONTEXT
+{
+    uint32_t contextIndex;
+    uint32_t updateMask;
+    uint32_t contextData;
+};
+
+typedef struct ACP_COMMAND_UPDATE_ALL_CONTEXTS
+{
+    uint32_t srcEntryCount;
+    uint32_t eqCompEntryCount;
+    uint32_t filtVolEntryCount;
+    uint32_t dmaReadEntryCount;
+    uint32_t dmaWriteEntryCount;
+    uint32_t pcmEntryCount;
+    uint32_t xmaEntryCount;
+    uint32_t srcEntries;
+    uint32_t eqCompEntries;
+    uint32_t filtVolEntries;
+    uint32_t dmaReadEntries;
+    uint32_t dmaWriteEntries;
+    uint32_t pcmEntries;
+    uint32_t xmaEntries;
+    uint32_t srcIndexCount;
+    uint32_t eqCompIndexCount;
+    uint32_t filtVolIndexCount;
+    uint32_t dmaReadIndexCount;
+    uint32_t dmaWriteIndexCount;
+    uint32_t pcmIndexCount;
+    uint32_t xmaIndexCount;
+    uint32_t srcIndices;
+    uint32_t eqCompIndices;
+    uint32_t filtVolIndices;
+    uint32_t dmaReadIndices;
+    uint32_t dmaWriteIndices;
+    uint32_t pcmIndices;
+    uint32_t xmaIndices;
+};
+
+typedef struct ACP_COMMAND_MESSAGE
+{
+    uint32_t message;
+};
+
+typedef struct ACP_COMMAND_UPDATE_FILTVOL_CONTEXT
+{
+    uint32_t contextIndex;
+    uint32_t updateMask;
+    uint32_t contextData;
+};
+
+typedef struct ACP_COMMAND_UPDATE_DMA_CONTEXT
+{
+    uint32_t contextIndex;
+    uint32_t updateMask;
+    uint32_t contextData;
+};
+
+typedef struct ACP_COMMAND_UPDATE_EQCOMP_CONTEXT
+{
+    uint32_t contextIndex;
+    uint32_t updateMask;
+    uint32_t contextData;
+};
+
+typedef struct ACP_COMMAND_UPDATE_XMA_READ_BUFFER
+{
+    uint32_t contextIndex;
+    uint32_t bufferIndex;
+    uint32_t bufferSize;
+    uint32_t changeSize;
+    uint32_t changeAddress;
+    uint32_t bufferAddress;
+};
+
+typedef struct ACP_COMMAND_LOAD_SHAPE_FLOWGRAPH
+{
+    uint32_t numCommands;
+    uint32_t flowgraph;
+    uint32_t persist;
+    uint32_t waitForStart;
+};
+
+typedef struct AcpCommand
+{
+    uint32_t frame;
+    uint64_t commandId;
+    uint32_t commandType;
+    uint32_t notification;
+  union
+  {
+    ACP_COMMAND_LOAD_SHAPE_FLOWGRAPH loadFlowgraph;
+    ACP_COMMAND_MESSAGE registerMessage;
+    ACP_COMMAND_ENABLE_OR_DISABLE_XMA_CONTEXT enableOrDisableXmaContext;
+    ACP_COMMAND_UPDATE_SRC_CONTEXT updateSrcContext;
+    ACP_COMMAND_UPDATE_XMA_CONTEXT updateXmaContext;
+    ACP_COMMAND_UPDATE_PCM_CONTEXT updatePcmContext;
+    ACP_COMMAND_UPDATE_EQCOMP_CONTEXT updateEqCompContext;
+    ACP_COMMAND_UPDATE_FILTVOL_CONTEXT updateFiltVolContext;
+    ACP_COMMAND_UPDATE_DMA_CONTEXT updateDmaContext;
+    ACP_COMMAND_ENABLE_OR_DISABLE_XMA_CONTEXTS enableOrDisableXmaContexts;
+    ACP_COMMAND_INCREMENT_DMA_POINTER incrementDmaPointer;
+    ACP_COMMAND_INCREMENT_PCM_WRITE_POINTER incrementPcmWritePointer;
+    ACP_COMMAND_INCREMENT_XMA_WRITE_BUFFER_OFFSET_READ incrementXmaWriteBufferOffsetRead;
+    ACP_COMMAND_UPDATE_XMA_READ_BUFFER updateXmaReadBuffer;
+    ACP_COMMAND_UPDATE_ALL_CONTEXTS updateAllContexts;
+    ACP_COMMAND_UPDATE_CONTEXTS updateContexts;
+    ACP_COMMAND_CONNECT connect;
+    ACP_COMMAND_DISCONNECT disconnect;
+    ACP_COMMAND_REGISTER_CONTEXT_ARRAYS registerContextArrays;
+    ACP_COMMAND_INIT_EVENT_LOG eventLog;
+  };
+};
+
+typedef struct AcpCommandQueueEntry
+{ 
+    uint32_t state;
+    AcpCommand command;
+    uint8_t padToAcpCacheLineSize[120];
+};
+
+typedef union AcpInternalCommandQueueEntry
+{ 
+    uint32_t state;
+    AcpCommand command;
+    uint8_t padToAcpCacheLineSize[120];
+};
+
 BOOL(WINAPI *TrueDeviceIoControl)(HANDLE hDevice, DWORD dwIoControlCode, LPVOID lpInBuffer, DWORD nInBufferSize,
                                   LPVOID lpOutBuffer, DWORD nOutBufferSize, LPDWORD lpBytesReturned,
                                   LPOVERLAPPED lpOverlapped) = DeviceIoControl;
@@ -263,14 +532,6 @@ template <typename T> T *LoganHeap::GetVirtualAddress(APU_ADDRESS ApuAddress, SI
     return (T *)GetVirtualAddress(ApuAddress, sizeof(T) * Count);
 }
 
-template <typename T> inline void DispatchLoganCommand(LOGAN_COMMAND_TYPE cmdType, T cmd)
-{
-    if (cmdType == LOGAN_COMMAND_TYPE_ACP_INIT)
-    {
-        LOGAN_COMMAND_ACP_INIT *Command = reinterpret_cast<LOGAN_COMMAND_ACP_INIT *>(cmd);
-    }
-}
-
 LoganHeap g_LoganHeap;
 
 DWORD BumpAlloc(_In_ SIZE_T size)
@@ -286,9 +547,12 @@ LPVOID Map(_In_ UINT NumPages, _In_ LPVOID Address, _In_ DWORD ApuAddress, _In_ 
     {
         LPVOID pageAddress = (LPVOID)((ULONG_PTR)Address + PageSize * i);
         UnmapViewOfFileEx(pageAddress, MEM_PRESERVE_PLACEHOLDER);
-        void *brain = MapViewOfFile3(hLoganMap, nullptr, pageAddress, ApuAddress + PageSize * i, PageSize,
+        DWORD lastError = GetLastError();
+        void *Map = MapViewOfFile3(hLoganMap, nullptr, pageAddress, ApuAddress + PageSize * i, PageSize,
                                      MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, nullptr, 0);
-        void *fart = VirtualAlloc2(nullptr, pageAddress, PageSize, MEM_COMMIT, PAGE_READWRITE, nullptr, 0);
+        lastError = GetLastError();
+        void *Memory = VirtualAlloc2(nullptr, pageAddress, PageSize, MEM_COMMIT, PAGE_READWRITE, nullptr, 0);
+        lastError = GetLastError();
     }
 
     return Address;
@@ -327,6 +591,39 @@ static BOOL ReadFromRingBuffer(T *OutBuffer, T *InBuffer, LOGAN_RING_BUFFER_DESC
     return TRUE;
 }
 
+static BOOL ReadFromInternalACPRingBuffer(AcpCommand *OutBuffer, AcpCommand *InBuffer, AcpState *InBufferDesc)
+{
+    if (InBufferDesc->internalCommandQueueReadCounter == InBufferDesc->internalCommandQueueSendCounter)
+        return FALSE;
+
+    *OutBuffer = InBuffer[InBufferDesc->internalCommandQueueReadPointer];
+    InBufferDesc->internalCommandQueueReadPointer++;
+    InBufferDesc->internalCommandQueueReadCounter++;
+
+    if (InBufferDesc->internalCommandQueueReadCounter >= 16)
+        InBufferDesc->internalCommandQueueReadCounter = 0;
+
+    return TRUE;
+}
+
+LOGAN_COMMAND_ACP_INIT *InitialCommand;
+
+template <typename T> 
+inline void DispatchACPCommand(ACP_COMMAND_TYPE_INTERNAL cmdType, AcpState *acpState, T Cmd)
+{
+    printf("Received Internal ACP command of type 0x%x\n", cmdType);
+}
+
+template <typename T> 
+inline void DispatchLoganCommand(LOGAN_COMMAND_TYPE cmdType, T cmd)
+{
+    printf("Received Logan command of type 0x%x\n", cmdType);
+    if (cmdType == LOGAN_COMMAND_TYPE_ACP_INIT)
+    {
+        InitialCommand = reinterpret_cast<LOGAN_COMMAND_ACP_INIT*>(cmd);
+    }
+}
+
 static DWORD WINAPI LoganChannelProc(LPVOID lpThreadParameter)
 {
     SetThreadDescription(GetCurrentThread(), L"Logan Thread");
@@ -336,16 +633,26 @@ static DWORD WINAPI LoganChannelProc(LPVOID lpThreadParameter)
                                                                           channel->commands.sizeInBlocks);
     auto messages = g_LoganHeap.GetVirtualAddress<LOGAN_MESSAGE_INTERNAL>(channel->messages.apuAddress,
                                                                           channel->messages.sizeInBlocks);
-
     do
     {
         LOGAN_COMMAND_INTERNAL command;
 
         while (ReadFromRingBuffer(&command, commands, &channel->commands))
-            DispatchLoganCommand((LOGAN_COMMAND_TYPE)command.commandType,
-                                 g_LoganHeap.GetVirtualAddress<LOGAN_COMMAND_ACP_INIT>(command.apuAddress));
+        {
+            DispatchLoganCommand((LOGAN_COMMAND_TYPE)command.commandType, g_LoganHeap.GetVirtualAddress(command.apuAddress, sizeof((LOGAN_COMMAND_TYPE)command.commandType)));
+        }       
 
-        Sleep(1);
+        if (InitialCommand != nullptr)
+        {
+            AcpInternalCommandQueueEntry *AcpInternalCommandQueue = g_LoganHeap.GetVirtualAddress<AcpInternalCommandQueueEntry>(InitialCommand->acpCommandQueue);
+            AcpState *pAcpState = g_LoganHeap.GetVirtualAddress<AcpState>(InitialCommand->acpState);
+
+            AcpCommand Command{};
+            while (ReadFromInternalACPRingBuffer(&Command, &AcpInternalCommandQueue->command, pAcpState))
+            {
+                DispatchACPCommand((ACP_COMMAND_TYPE_INTERNAL)Command.commandType, pAcpState, Command);
+            }
+        }
 
     } while (true);
 
@@ -361,13 +668,11 @@ EXTERN_C BOOL __stdcall EraDeviceIoControl(HANDLE hDevice, DWORD dwIoControlCode
 {
     if (hDevice != LoganHandle)
     {
-        return DeviceIoControl(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize,
+        return TrueDeviceIoControl(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize,
                                lpBytesReturned, lpOverlapped);
     }
     else
     {
-        SetLastError(ERROR_SUCCESS);
-
         if (dwIoControlCode == IOCTL_LOGAN_ALLOC_MAP) // 0x800E007
         {
             LOGAN_IOCTL_IN_ALLOC_MAP *InMap = reinterpret_cast<LOGAN_IOCTL_IN_ALLOC_MAP *>(lpInBuffer);
@@ -385,6 +690,7 @@ EXTERN_C BOOL __stdcall EraDeviceIoControl(HANDLE hDevice, DWORD dwIoControlCode
 
             *reinterpret_cast<LOGAN_IOCTL_OUT_ALLOC_MAP *>(lpOutBuffer) = outMap;
             *lpBytesReturned = 32;
+            SetLastError(ERROR_SUCCESS);
         }
         else if (dwIoControlCode == IOCTL_LOGAN_ATTACH_CHANNEL) // 0x800E00B
         {
@@ -392,6 +698,7 @@ EXTERN_C BOOL __stdcall EraDeviceIoControl(HANDLE hDevice, DWORD dwIoControlCode
             LOGAN_CHANNEL *Channel = g_LoganHeap.GetVirtualAddress<LOGAN_CHANNEL>(In->apuAddress);
             std::thread LoganThread(LoganChannelProc, Channel);
             LoganThread.detach();
+            SetLastError(ERROR_SUCCESS);
         }
         else if (dwIoControlCode == IOCTL_LOGAN_GET_MEMORY_STATISTICS)
         {
@@ -407,6 +714,7 @@ EXTERN_C BOOL __stdcall EraDeviceIoControl(HANDLE hDevice, DWORD dwIoControlCode
         }
         else if (dwIoControlCode == IOCTL_LOGAN_LOAD_ACP_FIRMWARE)
         {
+            SetLastError(ERROR_SUCCESS);
             return TRUE;
         }
         else if (dwIoControlCode == IOCTL_LOGAN_SET_USB_CAPTURE_STATE)
@@ -417,6 +725,7 @@ EXTERN_C BOOL __stdcall EraDeviceIoControl(HANDLE hDevice, DWORD dwIoControlCode
         {
             DispatchGetDriverMemory(dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize,
                                     lpBytesReturned, lpOverlapped);
+            SetLastError(ERROR_SUCCESS);
         }
         else
         {
@@ -456,6 +765,8 @@ void LoganInit()
     hLoganMap = CreateFileMapping2(INVALID_HANDLE_VALUE, nullptr, FILE_MAP_READ | FILE_MAP_WRITE, PAGE_READWRITE,
                                    SEC_RESERVE, 0x20000000, nullptr, nullptr, 0);
 
+    g_LoganHeap._view = MapViewOfFile(hLoganMap, FILE_MAP_WRITE, 0, 0, 0);
+    DWORD lastError = GetLastError();
     for (SIZE_T i = 0; i < 3; i++)
     {
         _driverMemory[i].sizeInBytes = 0x100000;
@@ -465,6 +776,6 @@ void LoganInit()
         UINT NumPages = Size / (1ULL << 16);
         _driverMemory[i].address = Map(NumPages, _driverMemory[i].address, _driverMemory[i].apuAddress, Size);
     }
-
-    g_LoganHeap._view = MapViewOfFile(hLoganMap, FILE_MAP_WRITE, 0, 0, 0);
+    lastError = GetLastError();
+    printf("Logan was initialized.\n");
 }

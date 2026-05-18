@@ -1,5 +1,8 @@
 #include "kernelx.h"
 #include "Logan.h"
+#include <atlbase.h>
+#include "Hooks.h"
+
 EXTERN_C CONSOLE_TYPE __stdcall GetConsoleType()
 {
     return CONSOLE_TYPE_XBOX_ONE;
@@ -228,7 +231,7 @@ EXTERN_C LPVOID __stdcall EraVirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, S
 {
     if (flAllocationType & MEM_GRAPHICS)
     {
-        flProtect = PAGE_READONLY;
+        //flProtect = PAGE_READONLY;
         flAllocationType |= MEM_COMMIT;
     }
 
@@ -695,6 +698,65 @@ EXTERN_C void __stdcall XMemReleaseAuxiliaryTitleMemory(_In_opt_ HANDLE hHandle)
     SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
 }
 
+
+void FixRelativePath(LPCWSTR &lpFileName)
+{
+    static std::wstring convert{};
+    std::wstring_view fileName(lpFileName);
+
+    if (fileName.size() == 0)
+        return;
+
+    int length = fileName.length();
+
+    if (fileName[0] == '.' && fileName[1] == '\\')
+    {
+        static std::wstring trimPath{};
+        trimPath = fileName.substr(2);
+        fileName = trimPath.data();
+        convert = std::filesystem::current_path().c_str();
+        if (length != '\\')
+        {
+            convert.append(L"\\");
+        }
+        convert.append(fileName);
+
+        lpFileName = convert.data();
+
+        return;
+    }
+    if (fileName[1] != ':')
+    {
+        convert = std::filesystem::current_path().c_str();
+        convert.append(L"\\");
+        convert.append(fileName);
+
+        lpFileName = convert.data();
+    }
+    else if ((fileName[0] == 'G' || fileName[0] == 'g') && fileName[1] == ':')
+    {
+
+        static std::wstring trimPath{};
+        trimPath = fileName.substr(2);
+        fileName = trimPath.data();
+        convert = std::filesystem::current_path().c_str();
+        convert.append(fileName);
+
+        lpFileName = convert.data();
+    }
+    else if ((fileName[0] == 'T' || fileName[0] == 't') && fileName[1] == ':')
+    {
+
+        static std::wstring trimPath{};
+        trimPath = fileName.substr(2);
+        fileName = trimPath.data();
+        convert = winrt::Windows::Storage::ApplicationData::Current().TemporaryFolder().Path();
+        convert.append(fileName);
+
+        lpFileName = convert.data();
+    }
+}
+
 EXTERN_C HANDLE __stdcall EraCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
                                          LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
                                          DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
@@ -711,6 +773,37 @@ EXTERN_C HANDLE __stdcall EraCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAcce
         return LoganHandle;
     }
 
+    static std::wstring convert{};
+    std::wstring_view fileName(lpFileName);
+
+    int length = fileName.length();
+    if (fileName[0] == '/')
+    {
+        static std::wstring trimPath{};
+        trimPath = fileName.substr(1);
+        fileName = trimPath.data();
+        convert = std::filesystem::current_path().c_str();
+        convert.append(L"\\");
+        convert.append(fileName);
+
+        lpFileName = convert.data();
+    }
+    else if (fileName[0] == '\\')
+    {
+    }
+    else if (fileName[length - 1] == '/')
+    {
+        convert = std::filesystem::current_path().c_str();
+        convert.append(L"\\");
+        convert.append(lpFileName);
+        std::replace(convert.begin(), convert.end(), L'/', L'\\');
+        lpFileName = convert.c_str();
+    }
+    else
+    {
+        FixRelativePath(lpFileName);
+    }
+
     return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                        dwFlagsAndAttributes, hTemplateFile);
 }
@@ -719,6 +812,10 @@ EXTERN_C HANDLE __stdcall EraCreateFileA(LPCSTR lpFileName, DWORD dwDesiredAcces
                                          LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
                                          DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
+    USES_CONVERSION;
+    LPCWSTR FileName = A2W(lpFileName);
+    FixRelativePath(FileName);
+
     return CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition,
                        dwFlagsAndAttributes, hTemplateFile);
 }
@@ -726,47 +823,94 @@ EXTERN_C HANDLE __stdcall EraCreateFileA(LPCSTR lpFileName, DWORD dwDesiredAcces
 EXTERN_C HANDLE __stdcall EraCreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
                                          DWORD dwCreationDisposition, LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams)
 {
+    FixRelativePath(lpFileName);
     return CreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
 }
 
 EXTERN_C BOOL __stdcall EraCreateDirectoryA(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
 {
-    return CreateDirectoryA(lpPathName, lpSecurityAttributes);
+    USES_CONVERSION;
+    LPCWSTR PathName = A2W(lpPathName);
+    FixRelativePath(PathName);
+
+    return CreateDirectoryW(PathName, lpSecurityAttributes);
 }
 
 EXTERN_C HMODULE __stdcall EraLoadLibraryExA(LPCSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
 {
-    return LoadLibraryExA(lpLibFileName, hFile, dwFlags);
+    USES_CONVERSION;
+    LPCWSTR LibName = A2W(lpLibFileName);
+
+    static std::wstring convert{};
+    std::wstring_view fileName(LibName);
+
+    if (fileName.size() != 0 && fileName[0] == 'G' && fileName[1] == ':')
+    {
+        static std::wstring trimPath{};
+        trimPath = fileName.substr(2);
+        fileName = trimPath.data();
+        convert = std::filesystem::current_path().c_str();
+        convert.append(fileName);
+    }
+
+    HMODULE result = LoadLibraryExW(LibName, hFile, dwFlags);
+
+    PatchNeededImports(result, GetRuntimeModule(), "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z",
+                       GetActivationFactoryRedirect);
+    return result;
 }
 
 EXTERN_C HMODULE __stdcall EraLoadLibraryW(LPCWSTR lpLibFileName)
 {
-    return LoadLibraryW(lpLibFileName);
+    static std::wstring convert{};
+    std::wstring_view fileName(lpLibFileName);
+
+    if (fileName[0] == 'G' && fileName[1] == ':' && fileName.size() != 0)
+    {
+
+        static std::wstring trimPath{};
+        trimPath = fileName.substr(2);
+        fileName = trimPath.data();
+        convert = std::filesystem::current_path().c_str();
+        convert.append(fileName);
+
+        lpLibFileName = convert.data();
+    }
+
+    HMODULE result = LoadLibraryW(lpLibFileName);
+    PatchNeededImports(result, GetRuntimeModule(), "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z",
+                       GetActivationFactoryRedirect);
+    return result;
 }
 
 EXTERN_C DWORD __stdcall EraGetFileAttributesW(LPCWSTR lpFileName)
 {
+    FixRelativePath(lpFileName);
     return GetFileAttributesW(lpFileName);
 }
 
 EXTERN_C BOOL __stdcall EraGetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId,
                                                 LPVOID lpFileInformation)
 {
+    FixRelativePath(lpFileName);
     return GetFileAttributesExW(lpFileName, fInfoLevelId, lpFileInformation);
 }
 
 EXTERN_C HANDLE __stdcall EraFindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
 {
+    FixRelativePath(lpFileName);
     return FindFirstFileW(lpFileName, lpFindFileData);
 }
 
 EXTERN_C BOOL __stdcall EraDeleteFileW(LPCWSTR lpFileName)
 {
+    FixRelativePath(lpFileName);
     return DeleteFileW(lpFileName);
 }
 
 EXTERN_C HMODULE __stdcall EraLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
+    FixRelativePath(lpLibFileName);
     return LoadLibraryExW(lpLibFileName, hFile, dwFlags);
 }
 

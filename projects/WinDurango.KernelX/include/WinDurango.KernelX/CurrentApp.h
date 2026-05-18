@@ -4,6 +4,7 @@
 #include <windows.foundation.h>
 #include <windows.system.h>
 #include <winrt/base.h>
+#include "kernelx.h"
 
 using namespace ABI::Windows::System;
 using namespace ABI::Windows::Foundation;

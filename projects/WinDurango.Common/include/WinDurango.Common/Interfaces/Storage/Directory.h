@@ -35,5 +35,7 @@ namespace wd::common::interfaces::storage
         virtual bool remove() = 0;
         virtual bool move(std::filesystem::path path) = 0;
         virtual bool copy(std::filesystem::path path) = 0;
+        virtual bool dirExists(std::string) = 0;
+        virtual bool fileExists(std::string) = 0;
     };
 } // namespace wd::common::interfaces::storage

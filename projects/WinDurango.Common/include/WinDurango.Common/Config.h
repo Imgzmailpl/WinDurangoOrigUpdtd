@@ -15,10 +15,11 @@ namespace wd::common
 {
     class Config
     {
-      public:
+    public:
         Config() : pFile(nullptr), RO(false)
         {
         }
+
         Config(std::shared_ptr<interfaces::storage::File> file, bool ReadOnly = false) : pFile(file), RO(ReadOnly)
         {
         }
@@ -33,7 +34,7 @@ namespace wd::common
 
         template <typename T> bool set(std::string node, T type);
 
-      private:
+    private:
         std::shared_ptr<interfaces::storage::File> pFile;
         bool RO;
         nlohmann::json data;

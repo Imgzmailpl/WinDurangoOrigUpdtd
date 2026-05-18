@@ -1,6 +1,7 @@
 #include "WinDurangoImplWinRT.h"
 #include <iostream>
 #include <windows.h>
+#pragma comment(lib, "runtimeobject.lib")
 
 /*
  * Found here

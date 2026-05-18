@@ -1,5 +1,8 @@
 ﻿#include "d3d11.x.h"
 #include "IIDExports.h"
+#include "d3d11_x.g.h"
+#include "ID3D11Runtime.h"
+#include "kernelx.h"
 
 EXTERN_C HRESULT __stdcall EraD3D10CreateBlob()
 {
@@ -12,8 +15,10 @@ EXTERN_C HRESULT __stdcall EraD3D11CreateDevice(void *pAdapter, D3D_DRIVER_TYPE 
                                                 UINT SDKVersion, void **ppDevice, D3D_FEATURE_LEVEL *pFeatureLevel,
                                                 void **ppImmediateContext)
 {
-    IMPLEMENT_STUB();
-    return E_NOTIMPL;
+    ID3D11Runtime *pRuntime;
+    d3d11CreateInstance<D3D11Runtime>(g_ABI, (void **)&pRuntime);
+    auto hr = pRuntime->CreateDevice((void **)ppDevice, (void **)ppImmediateContext);
+    return hr;
 }
 
 EXTERN_C HRESULT __stdcall EraD3D11CreateDeviceAndSwapChain()
@@ -38,8 +43,10 @@ struct D3D11X_CREATE_DEVICE_PARAMETERS
 EXTERN_C HRESULT __stdcall D3D11XCreateDeviceX(const D3D11X_CREATE_DEVICE_PARAMETERS *pParameters, void **ppDevice,
                                                void **ppImmediateContext)
 {
-    IMPLEMENT_STUB();
-    return E_NOTIMPL;
+    ID3D11Runtime *pRuntime;
+    d3d11CreateInstance<D3D11Runtime>(g_ABI, (void **)&pRuntime);
+    auto hr = pRuntime->CreateDevice((void **)ppDevice, (void **)ppImmediateContext);
+    return hr;
 }
 
 EXTERN_C HRESULT __stdcall D3D11XCreateDeviceXAndSwapChain1(const D3D11X_CREATE_DEVICE_PARAMETERS *pParameters,
@@ -47,8 +54,14 @@ EXTERN_C HRESULT __stdcall D3D11XCreateDeviceXAndSwapChain1(const D3D11X_CREATE_
                                                             void **ppSwapChain, void **ppDevice,
                                                             void **ppImmediateContext)
 {
-    IMPLEMENT_STUB();
-    return E_NOTIMPL;
+    ID3D11Runtime *pRuntime;
+    d3d11CreateInstance<D3D11Runtime>(g_ABI, (void **)&pRuntime);
+    auto hr = pRuntime->CreateDevice((void **)ppDevice, (void **)ppImmediateContext);
+    if (FAILED(hr))
+        return hr;
+
+    hr = pRuntime->CreateSwapChain(ppSwapChain, (*ppDevice), pSwapChainDesc);
+    return hr;
 }
 
 EXTERN_C HRESULT __stdcall D3DAllocateGraphicsMemory(SIZE_T dwSize, UINT64 a2, void *a3, int a4, void **a5)
@@ -71,8 +84,14 @@ EXTERN_C HRESULT __stdcall D3DFreeGraphicsMemory(void *pAddress)
 
 EXTERN_C HRESULT __stdcall D3DMapEsramMemory(UINT Flags, void *pVirtualAddress, UINT NumPages, const UINT *pPageList)
 {
-    IMPLEMENT_STUB();
-    return E_NOTIMPL;
+    DWORD flAllocationType = 0;
+
+    if ((Flags & 1) != 0)
+        flAllocationType = MEM_LARGE_PAGES;
+    else if ((Flags & 2) != 0)
+        flAllocationType = MEM_4MB_PAGES;
+
+    return MapTitleEsramPages(pVirtualAddress, NumPages, flAllocationType, pPageList);
 }
 
 struct DXGIX_FRAME_STATISTICS
@@ -124,17 +143,17 @@ struct DXGIX_PRESENTARRAY_PARAMETERS
     UINT Flags;
 };
 
-void PresentArray(UINT NumSwapChains, void **SwapChains, UINT SyncInterval)
-{
-    // TODO
-}
-
 EXTERN_C HRESULT __stdcall DXGIXPresentArray(UINT SyncInterval, UINT PresentImmediateThreshold, UINT Flags,
                                              UINT NumSwapChains, void **ppSwapChains,
                                              const DXGIX_PRESENTARRAY_PARAMETERS *pPresentParameters)
 {
-    IMPLEMENT_STUB();
-    return E_NOTIMPL;
+    if (!g_PresentArrayHelper)
+    {
+        d3d11CreateInstance<DXGIXPresentArrayHelper>(g_ABI, (void **)&g_PresentArrayHelper);
+    }
+
+    g_PresentArrayHelper->PresentArray(ppSwapChains, NumSwapChains, SyncInterval);
+    return S_OK;
 }
 
 EXTERN_C HRESULT __stdcall DXGIXSetVLineNotification(UINT VLineCounter, UINT VLineNum, HANDLE hEvent)

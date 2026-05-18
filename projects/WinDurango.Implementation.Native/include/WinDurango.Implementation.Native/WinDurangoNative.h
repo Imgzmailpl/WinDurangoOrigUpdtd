@@ -1,6 +1,7 @@
 #pragma once
 
 // TODO we can just move this all to Common I believe.
+#pragma comment(lib, "runtimeobject.lib")
 
 #ifdef WD_API_EXPORTS
 #define WD_API __declspec(dllexport)

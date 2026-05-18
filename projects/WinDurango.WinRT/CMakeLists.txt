@@ -4,7 +4,7 @@ project(WinDurango.WinRT VERSION 1.0.0)
 set(VERSION_SUFFIX "-dev.1") # used for non-stable versions, otherwise blank
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(cppwinrt CONFIG REQUIRED HINTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/vcpkg/pkgs/cppwinrt_x64-windows/share/cppwinrt")
+add_compile_definitions(_AMD64_)
 
 make_directory(${CMAKE_BINARY_DIR}/WinMetadata)
 file(GLOB IDL_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/idl/*.idl")
@@ -37,11 +37,8 @@ execute_process(
         -component "${CMAKE_CURRENT_SOURCE_DIR}\\Generated Files\\sources"
         -out "${CMAKE_CURRENT_SOURCE_DIR}\\Generated Files")
 
-set(FILES
-    "src/Windows/Xbox/Media/Windows.Xbox.Media.GameTransportControls.cpp"
-    "src/Windows/Xbox/Media/Windows.Xbox.Media.GameTransportControlsButtonPressedEventArgs.cpp"
-    "src/Windows/Xbox/Media/Windows.Xbox.Media.GameTransportControlsPropertyChangedEventArgs.cpp"
-    "src/WinDurangoWinRT.cpp"
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
 file(GLOB WINRT_FILES
@@ -50,16 +47,30 @@ file(GLOB WINRT_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/Generated Files/winrt/impl/*.cpp" 
 )
 
-add_library(WinDurango.WinRT SHARED ${FILES} ${WINRT_FILES} WinDurango.WinRT.def)
+add_library(WinDurango.WinRT SHARED ${SOURCES} ${WINRT_FILES} WinDurango.WinRT.def)
 target_include_directories(WinDurango.WinRT PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Achievements"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Media"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/System"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Input"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Management/Deployment"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/ApplicationModel"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/ApplicationModel/Core"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/ApplicationModel/Store"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/ApplicationModel/State"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Multiplayer"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Storage"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Services"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Networking"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Chat"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT/Windows/Xbox/Speech/Recognition"
     "${CMAKE_CURRENT_SOURCE_DIR}/Generated Files"
     "${CMAKE_SOURCE_DIR}/projects/WinDurango.Common/include"
 )
 
-target_link_libraries(WinDurango.WinRT PRIVATE WinDurango.Common Microsoft::CppWinRT windowsapp runtimeobject)
+target_link_libraries(WinDurango.WinRT PRIVATE WinDurango.Common windowsapp runtimeobject)
 
 target_compile_definitions(WinDurango.WinRT PUBLIC
     WINDURANGO_WINRT_COMPILER_NAME="${CMAKE_CXX_COMPILER_ID}"

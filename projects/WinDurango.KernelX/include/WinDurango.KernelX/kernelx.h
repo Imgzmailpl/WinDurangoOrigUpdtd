@@ -1,12 +1,14 @@
 //
 // Created by DexrnZacAttack on 1/23/26 using zPc-i2.
 //
-#ifndef WINDURANGO_KERNEL_H
-#define WINDURANGO_KERNEL_H
+#pragma once
 
 #include <Windows.h>
 #include <bitset>
 #include <map>
+#include "WinDurango.Common/Interfaces/Storage/Directory.h"
+#include "WinDurango.Common/WinDurango.h"
+#include "WinDurango.Implementation.WinRT/Interfaces/Storage/Directory.h"
 
 // Most of those came from XWine1
 //(More specifically, SlimEra).
@@ -214,4 +216,4 @@ CRITICAL_SECTION XmpAllocationHookLock;
 static PXMEMALLOC_ROUTINE XmpAllocRoutine = XMemAllocDefault;
 static PXMEMFREE_ROUTINE XmpFreeRoutine = XMemFreeDefault;
 
-#endif // WINDURANGO_KERNEL_H
+extern std::shared_ptr<wd::common::WinDurango> winDurango;

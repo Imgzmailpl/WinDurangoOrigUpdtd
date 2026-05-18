@@ -10,6 +10,12 @@
 #include <dxgi1_6.h>
 #include <map>
 #include <mutex>
+#include <algorithm>
+#include <cstdint>
+#include <DirectXTex.h>
+#include "WinDurango.Common/WinDurango.h"
+
+extern std::shared_ptr<wd::common::WinDurango> p_wd;
 
 // We use that to know the OS version.
 abi_t g_ABI{};
@@ -68,4 +74,14 @@ void GetCombaseVersion()
     g_ABI.Minor = minor;
     g_ABI.Build = build;
     g_ABI.Revision = revision;
+}
+
+inline void CalculatePitch(uint32_t Width, uint32_t Height, DXGI_FORMAT Format, uint32_t* pRowPitch, uint32_t* pSlicePitch)
+{;
+    SIZE_T rowPitch = 0;
+    SIZE_T slicePitch = 0;
+    DirectX::ComputePitch(Format, Width, Height, rowPitch, slicePitch);
+
+    (*pRowPitch) = rowPitch;
+    (*pSlicePitch) = slicePitch;
 }

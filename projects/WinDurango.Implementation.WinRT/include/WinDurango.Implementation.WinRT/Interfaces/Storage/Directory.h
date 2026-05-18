@@ -33,6 +33,8 @@ namespace wd::impl::winrt::interfaces::storage
         virtual bool remove() override;
         virtual bool move(std::filesystem::path path) override;
         virtual bool copy(std::filesystem::path path) override;
+        virtual bool dirExists(std::string) override;
+        virtual bool fileExists(std::string) override;
 
       private:
         std::filesystem::path path;

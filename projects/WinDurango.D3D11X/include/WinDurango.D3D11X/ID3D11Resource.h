@@ -1,0 +1,251 @@
+#pragma once
+#include "d3d11_x.g.h"
+
+template <abi_t ABI> class D3D11Resource : public gfx::ID3D11Resource<ABI>
+{
+public:
+    ID3D11Resource *m_pFunction = nullptr;
+    bool m_IsDirty = false;
+
+    D3D11Resource(ID3D11Resource *pResource)
+    {
+        m_pFunction = pResource;
+        InterlockedIncrement(&this->m_RefCount);
+    }
+
+    //
+    // IUnknown
+    //
+    HRESULT QueryInterface(REFIID riid, void **ppvObject);
+    ULONG AddRef();
+    ULONG Release();
+
+    //
+    // ID3D11DeviceChild
+    //
+    void GetDevice(gfx::ID3D11Device<ABI> **ppDevice);
+    HRESULT GetPrivateData(_GUID const &guid, uint32_t *pDataSize, void *pData);
+    HRESULT SetPrivateData(_GUID const &guid, uint32_t DataSize, void const *pData);
+    HRESULT SetPrivateDataInterface(_GUID const &guid, IUnknown const *pData);
+    HRESULT SetPrivateDataInterfaceGraphics(_GUID const &guid, xbox::IGraphicsUnknown<ABI> const *pData);
+
+    //
+    // ID3D11Resource
+    //
+    void GetType(D3D11_RESOURCE_DIMENSION *pDimension);
+    void SetEvictionPriority(uint32_t EvictionPriority);
+    uint32_t GetEvictionPriority();
+    void GetDescriptor(gfx::D3D11X_DESCRIPTOR_RESOURCE *pDesc);
+};
+
+#undef ABI_INTERFACE
+#define ABI_INTERFACE(ABI) D3D11Resource<ABI>
+D3D11_DECLARE_ABI_TEMPLATES(extern);
+
+
+template <abi_t ABI> class D3D11Texture1D : public gfx::ID3D11Texture1D<ABI>
+{
+public:
+    ID3D11Texture1D *m_pFunction = nullptr;
+    bool m_IsDirty = false;
+
+    D3D11Texture1D(ID3D11Texture1D *pResource)
+    {
+        m_pFunction = pResource;
+        InterlockedIncrement(&this->m_RefCount);
+    }
+
+    //
+    // IUnknown
+    //
+    HRESULT QueryInterface(REFIID riid, void **ppvObject);
+    ULONG AddRef();
+    ULONG Release();
+
+    //
+    // ID3D11DeviceChild
+    //
+    void GetDevice(gfx::ID3D11Device<ABI> **ppDevice);
+    HRESULT GetPrivateData(_GUID const &guid, uint32_t *pDataSize, void *pData);
+    HRESULT SetPrivateData(_GUID const &guid, uint32_t DataSize, void const *pData);
+    HRESULT SetPrivateDataInterface(_GUID const &guid, IUnknown const *pData);
+    HRESULT SetPrivateDataInterfaceGraphics(_GUID const &guid, xbox::IGraphicsUnknown<ABI> const *pData);
+    HRESULT SetName(LPCWSTR pName)
+    {
+        IMPLEMENT_STUB();
+        return E_NOTIMPL;
+    }
+
+    //
+    // ID3D11Resource
+    //
+    void GetType(D3D11_RESOURCE_DIMENSION *pDimension);
+    void SetEvictionPriority(uint32_t EvictionPriority);
+    uint32_t GetEvictionPriority();
+    void GetDescriptor(gfx::D3D11X_DESCRIPTOR_RESOURCE *pDesc);
+
+    //
+    // ID3D11Texture1D
+    //
+    void GetDesc(D3D11_TEXTURE1D_DESC *pDesc);
+};
+
+#undef ABI_INTERFACE
+#define ABI_INTERFACE(ABI) D3D11Texture1D<ABI>
+D3D11_DECLARE_ABI_TEMPLATES(extern);
+
+
+template <abi_t ABI> class D3D11Texture2D : public gfx::ID3D11Texture2D<ABI>
+{
+  public:
+    ID3D11Texture2D *m_pFunction = nullptr;
+    bool m_IsDirty = false;
+
+    D3D11Texture2D(ID3D11Texture2D *pResource)
+    {
+        m_pFunction = pResource;
+        InterlockedIncrement(&this->m_RefCount);
+    }
+
+    //
+    // IUnknown
+    //
+    HRESULT QueryInterface(REFIID riid, void **ppvObject);
+    ULONG AddRef();
+    ULONG Release();
+
+    //
+    // ID3D11DeviceChild
+    //
+    void GetDevice(gfx::ID3D11Device<ABI> **ppDevice);
+    HRESULT GetPrivateData(_GUID const &guid, uint32_t *pDataSize, void *pData);
+    HRESULT SetPrivateData(_GUID const &guid, uint32_t DataSize, void const *pData);
+    HRESULT SetPrivateDataInterface(_GUID const &guid, IUnknown const *pData);
+    HRESULT SetPrivateDataInterfaceGraphics(_GUID const &guid, xbox::IGraphicsUnknown<ABI> const *pData);
+    HRESULT SetName(LPCWSTR pName)
+    {
+        IMPLEMENT_STUB();
+        return E_NOTIMPL;
+    }
+
+    //
+    // ID3D11Resource
+    //
+    void GetType(D3D11_RESOURCE_DIMENSION *pDimension);
+    void SetEvictionPriority(uint32_t EvictionPriority);
+    uint32_t GetEvictionPriority();
+    void GetDescriptor(gfx::D3D11X_DESCRIPTOR_RESOURCE *pDesc);
+
+    //
+    // ID3D11Texture2D
+    //
+    void GetDesc(D3D11_TEXTURE2D_DESC *pDesc);
+};
+
+#undef ABI_INTERFACE
+#define ABI_INTERFACE(ABI) D3D11Texture2D<ABI>
+D3D11_DECLARE_ABI_TEMPLATES(extern);
+
+
+template <abi_t ABI> class D3D11Texture3D : public gfx::ID3D11Texture3D<ABI>
+{
+public:
+    ID3D11Texture3D *m_pFunction = nullptr;
+    bool m_IsDirty = false;
+
+    D3D11Texture3D(ID3D11Texture3D *pResource)
+    {
+        m_pFunction = pResource;
+        InterlockedIncrement(&this->m_RefCount);
+    }
+
+    //
+    // IUnknown
+    //
+    HRESULT QueryInterface(REFIID riid, void **ppvObject);
+    ULONG AddRef();
+    ULONG Release();
+
+    //
+    // ID3D11DeviceChild
+    //
+    void GetDevice(gfx::ID3D11Device<ABI> **ppDevice);
+    HRESULT GetPrivateData(_GUID const &guid, uint32_t *pDataSize, void *pData);
+    HRESULT SetPrivateData(_GUID const &guid, uint32_t DataSize, void const *pData);
+    HRESULT SetPrivateDataInterface(_GUID const &guid, IUnknown const *pData);
+    HRESULT SetPrivateDataInterfaceGraphics(_GUID const &guid, xbox::IGraphicsUnknown<ABI> const *pData);
+    HRESULT SetName(LPCWSTR pName)
+    {
+        IMPLEMENT_STUB();
+        return E_NOTIMPL;
+    }
+
+    //
+    // ID3D11Resource
+    //
+    void GetType(D3D11_RESOURCE_DIMENSION *pDimension);
+    void SetEvictionPriority(uint32_t EvictionPriority);
+    uint32_t GetEvictionPriority();
+    void GetDescriptor(gfx::D3D11X_DESCRIPTOR_RESOURCE *pDesc);
+
+    //
+    // ID3D11Texture3D
+    //
+    void GetDesc(D3D11_TEXTURE3D_DESC *pDesc);
+};
+
+#undef ABI_INTERFACE
+#define ABI_INTERFACE(ABI) D3D11Texture3D<ABI>
+D3D11_DECLARE_ABI_TEMPLATES(extern);
+
+
+template <abi_t ABI> class D3D11Buffer : public gfx::ID3D11Buffer<ABI>
+{
+public:
+    ID3D11Buffer *m_pFunction = nullptr;
+    bool m_IsDirty = false;
+
+    D3D11Buffer(ID3D11Buffer *pResource)
+    {
+        m_pFunction = pResource;
+        InterlockedIncrement(&this->m_RefCount);
+    }
+
+    //
+    // IUnknown
+    //
+    HRESULT QueryInterface(REFIID riid, void **ppvObject);
+    ULONG AddRef();
+    ULONG Release();
+
+    //
+    // ID3D11DeviceChild
+    //
+    void GetDevice(gfx::ID3D11Device<ABI> **ppDevice);
+    HRESULT GetPrivateData(_GUID const &guid, uint32_t *pDataSize, void *pData);
+    HRESULT SetPrivateData(_GUID const &guid, uint32_t DataSize, void const *pData);
+    HRESULT SetPrivateDataInterface(_GUID const &guid, IUnknown const *pData);
+    HRESULT SetPrivateDataInterfaceGraphics(_GUID const &guid, xbox::IGraphicsUnknown<ABI> const *pData);
+    HRESULT SetName(LPCWSTR pName)
+    {
+        IMPLEMENT_STUB();
+        return E_NOTIMPL;
+    }
+
+    //
+    // ID3D11Resource
+    //
+    void GetType(D3D11_RESOURCE_DIMENSION *pDimension);
+    void SetEvictionPriority(uint32_t EvictionPriority);
+    uint32_t GetEvictionPriority();
+    void GetDescriptor(gfx::D3D11X_DESCRIPTOR_RESOURCE *pDesc);
+
+    //
+    // ID3D11Buffer
+    //
+    void GetDesc(D3D11_BUFFER_DESC *pDesc);
+};
+
+#undef ABI_INTERFACE
+#define ABI_INTERFACE(ABI) D3D11Buffer<ABI>
+D3D11_DECLARE_ABI_TEMPLATES(extern);

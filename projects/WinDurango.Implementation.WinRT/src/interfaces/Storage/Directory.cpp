@@ -233,3 +233,39 @@ bool wd::impl::winrt::interfaces::storage::WinRTDirectory::copy(std::filesystem:
     }
     return false;
 }
+
+bool wd::impl::winrt::interfaces::storage::WinRTDirectory::dirExists(std::string name)
+{
+    if (dir == nullptr)
+    {
+        return false;
+    }
+    try
+    {
+        auto item = dir.GetItemAsync(to_hstring(name)).get();
+        return item && item.IsOfType(StorageItemTypes::Folder);
+    }
+    catch (const hresult_error &ex)
+    {
+        return false;
+    }
+    return false;
+}
+
+bool wd::impl::winrt::interfaces::storage::WinRTDirectory::fileExists(std::string name)
+{
+    if (dir == nullptr)
+    {
+        return false;
+    }
+    try
+    {
+        auto item = dir.GetItemAsync(to_hstring(name)).get();
+        return item && item.IsOfType(StorageItemTypes::File);
+    }
+    catch (const hresult_error &ex)
+    {
+        return false;
+    }
+    return false;
+}

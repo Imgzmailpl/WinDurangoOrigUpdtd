@@ -30,16 +30,16 @@ namespace winrt::Windows::Xbox::Media::implementation
         void IsViewEnabled(bool value);
         bool IsBackEnabled();
         void IsBackEnabled(bool value);
-        winrt::event_token add_ButtonPressed(
+        winrt::event_token ButtonPressed(
             winrt::Windows::Foundation::TypedEventHandler<
                 winrt::Windows::Xbox::Media::GameTransportControls,
                 winrt::Windows::Xbox::Media::GameTransportControlsButtonPressedEventArgs> const &handler);
-        void remove_ButtonPressed(winrt::event_token const &token);
-        winrt::event_token add_PropertyChanged(
+        void ButtonPressed(winrt::event_token const &token);
+        winrt::event_token PropertyChanged(
             winrt::Windows::Foundation::TypedEventHandler<
                 winrt::Windows::Xbox::Media::GameTransportControls,
                 winrt::Windows::Xbox::Media::GameTransportControlsPropertyChangedEventArgs> const &handler);
-        void remove_PropertyChanged(winrt::event_token const &token);
+        void PropertyChanged(winrt::event_token const &token);
 
       private:
         hstring _title = L"";

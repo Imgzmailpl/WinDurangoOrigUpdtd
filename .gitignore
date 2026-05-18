@@ -5,3 +5,5 @@
 **/.vs/*
 **/vcpkg_installed/*
 /projects/WinDurango.Testing/packages/Microsoft.Windows.CppWinRT.2.0.220531.1
+/projects/WinDurango.Testing/WinDuran.9dd2bb93/x64/Release/WinDuran.9dd2bb93.tlog
+/projects/WinDurango.Testing/WinDuran.9dd2bb93/x64/Release

@@ -7,10 +7,18 @@
 #include <string>
 #include <windows.applicationmodel.core.h>
 #include <windows.h>
+#include <winstring.h>
+#include <wrl/wrappers/corewrappers.h>
 #include <winrt/Windows.ApplicationModel.h>
 #include <winrt/windows.storage.provider.h>
 #include <wrl/client.h>
 #include <detours.h>
+#include "CurrentApp.h"
+#include "EraCoreWindow.h"
+#include "EraCoreApplication.h"
+
+using namespace Microsoft::WRL;
+using namespace Microsoft::WRL::Wrappers;
 
 typedef int32_t (__stdcall *GetActivationFactory_t)(HSTRING classId, IActivationFactory** factory);
 
@@ -38,3 +46,48 @@ inline bool IsClassName(HSTRING classId, const char *classIdName)
 }
 
 HRESULT(WINAPI *TrueActivateInstance)(IActivationFactory *thisptr, IInspectable **instance) = nullptr;
+
+typedef HRESULT(WINAPI *PFNROGETACTIVATIONFACTORY)(HSTRING, REFIID, void **); // TODO: Put somewhere
+
+#define IsXboxCallee() IsXboxAddress(_ReturnAddress())
+
+BOOL IsXboxModule(HMODULE module)
+{
+    return module == GetModuleHandleW(nullptr);
+}
+
+inline BOOL IsXboxAddress(const PVOID Address)
+{
+    HMODULE hModule;
+
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, static_cast<LPCWSTR>(Address), &hModule))
+        return FALSE;
+
+    return IsXboxModule(hModule);
+}
+
+HRESULT(STDMETHODCALLTYPE *TrueGetForCurrentThread)(ICoreWindowStatic *staticWindow, CoreWindow **window);
+
+HRESULT STDMETHODCALLTYPE EraGetForCurrentThread(ICoreWindowStatic *pThis, CoreWindow **ppWindow);
+
+typedef HWND(WINAPI *PCreateWindowInBandEx)(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
+                                            int x, int y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu,
+                                            HINSTANCE hInstance, LPVOID lpParam, DWORD dwBand, DWORD dwTypeFlags);
+
+PCreateWindowInBandEx TrueCreateWindowInBandEx = 0;
+
+HWND WINAPI EraCreateWindowInBandEx(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int x,
+                                    int y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
+                                    LPVOID lpParam, DWORD dwBand, DWORD dwTypeFlags);
+
+HRESULT(WINAPI *TrueCoCreateInstance)(_In_ REFCLSID rclsid, _In_opt_ LPUNKNOWN pUnkOuter, _In_ DWORD dwClsContext,
+                                      _In_ REFIID riid,
+                                      _COM_Outptr_ _At_(*ppv, _Post_readable_size_(_Inexpressible_(varies)))
+                                          LPVOID FAR *ppv) = CoCreateInstance;
+
+HRESULT __stdcall EraCoCreateInstance(_In_ REFCLSID rclsid, _In_opt_ LPUNKNOWN pUnkOuter, _In_ DWORD dwClsContext,
+                                      _In_ REFIID riid,
+                                      _COM_Outptr_ _At_(*ppv, _Post_readable_size_(_Inexpressible_(varies)))
+                                          LPVOID FAR *ppv);
+
+HMODULE User32 = nullptr;
