@@ -4,3 +4,4 @@
 **/.vscode/*
 **/.vs/*
 **/vcpkg_installed/*
+/projects/WinDurango.Testing/packages/Microsoft.Windows.CppWinRT.2.0.220531.1
