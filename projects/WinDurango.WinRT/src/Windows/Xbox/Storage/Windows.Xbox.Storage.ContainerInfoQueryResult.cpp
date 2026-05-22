@@ -15,7 +15,8 @@ namespace winrt::Windows::Xbox::Storage::implementation
     }
     winrt::Windows::Foundation::IAsyncOperation<uint32_t> ContainerInfoQueryResult::GetItemCountAsync()
     {
-        co_await winrt::resume_background();
+        // Fix: Coroutines must return a value
+        co_return 0;
     }
     winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVectorView<winrt::Windows::Xbox::Storage::ContainerInfo2>> ContainerInfoQueryResult::GetContainerInfo2Async(uint32_t unk, uint32_t unka)
     {

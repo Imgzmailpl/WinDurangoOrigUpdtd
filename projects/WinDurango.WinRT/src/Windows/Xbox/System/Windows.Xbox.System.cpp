@@ -2,19 +2,9 @@
 
 namespace winrt::Windows::Xbox::System::implementation
 {
-    hstring GetTokenAndSignatureResult::Signature()
-    {
-        return signature;
-    }
-
-    hstring GetTokenAndSignatureResult::Token()
-    {
-        return token;
-    }
-
     winrt::Windows::Xbox::System::UserOnlineState OnlineStateChangedEventArgs::State()
     {
-        return UserOnlineState::Offline;
+        return state;
     }
 
     winrt::hresult GetPictureResult::Result()

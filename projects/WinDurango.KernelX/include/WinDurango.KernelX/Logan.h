@@ -543,18 +543,38 @@ DWORD BumpAlloc(_In_ SIZE_T size)
 
 LPVOID Map(_In_ UINT NumPages, _In_ LPVOID Address, _In_ DWORD ApuAddress, _In_ UINT PageSize)
 {
+    // CRITICAL FIX: If the caller asks for memory but provides no base address,
+    // we must reserve a contiguous virtual memory block for them first!
+    if (Address == nullptr)
+    {
+        Address = VirtualAlloc2(nullptr, nullptr, NumPages * PageSize, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER,
+                                PAGE_NOACCESS, nullptr, 0);
+        if (Address == nullptr)
+        {
+            OutputDebugStringW(L"[Logan] FATAL: Failed to reserve APU memory block!\n");
+            return nullptr;
+        }
+    }
+
     for (UINT i = 0; i < NumPages; i++)
     {
         LPVOID pageAddress = (LPVOID)((ULONG_PTR)Address + PageSize * i);
+
+        // Release the placeholder so we can map the physical APU file view into it
         UnmapViewOfFileEx(pageAddress, MEM_PRESERVE_PLACEHOLDER);
-        DWORD lastError = GetLastError();
-        void *Map = MapViewOfFile3(hLoganMap, nullptr, pageAddress, ApuAddress + PageSize * i, PageSize,
-                                     MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, nullptr, 0);
-        lastError = GetLastError();
-        void *Memory = VirtualAlloc2(nullptr, pageAddress, PageSize, MEM_COMMIT, PAGE_READWRITE, nullptr, 0);
-        lastError = GetLastError();
+
+        // Map the APU memory
+        void *MappedView = MapViewOfFile3(hLoganMap, nullptr, pageAddress, ApuAddress + PageSize * i, PageSize,
+                                          MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, nullptr, 0);
+
+        // Fallback: If mapping the hardware file fails, force commit standard RAM so the game doesn't crash
+        if (!MappedView)
+        {
+            VirtualAlloc2(nullptr, pageAddress, PageSize, MEM_COMMIT, PAGE_READWRITE, nullptr, 0);
+        }
     }
 
+    // Now returns a REAL memory address instead of nullptr!
     return Address;
 }
 

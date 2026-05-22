@@ -1,21 +1,20 @@
 #pragma comment(lib, "runtimeobject.lib")
 #include "Hooks.h"
-#include "kernelx.h"
 #include "CurrentApp.h"
+#include "MMDeviceEnumerator.h"
+#include "kernelx.h"
 #include <detours.h>
 #include <wrl.h>
-#include "MMDeviceEnumerator.h"
 
 using namespace ABI::Windows::ApplicationModel::Store;
 
 std::shared_ptr<wd::common::WinDurango> winDurango;
 
 HRESULT WINAPI WdRoGetActivationFactory(_In_ HSTRING activatableClassId, _In_ REFIID iid, _COM_Outptr_ void **factory);
-
-HRESULT WINAPI WdRoGetActivationFactoryCore(_In_ HSTRING activatableClassId, _In_ REFIID iid, _COM_Outptr_ void **factory);
+HRESULT WINAPI WdRoGetActivationFactoryCore(_In_ HSTRING activatableClassId, _In_ REFIID iid,
+                                            _COM_Outptr_ void **factory);
 
 static PFNROGETACTIVATIONFACTORY g_RoGetActivationFactory = RoGetActivationFactory;
-
 static std::vector<PFNGETACTIVATIONFACTORY> g_RoEntryPoints;
 
 HRESULT XWineGetImport(_In_opt_ HMODULE Module, _In_ HMODULE ImportModule, _In_ LPCSTR Import,
@@ -23,10 +22,8 @@ HRESULT XWineGetImport(_In_opt_ HMODULE Module, _In_ HMODULE ImportModule, _In_ 
 {
     if (ImportModule == nullptr)
         return E_INVALIDARG;
-
     if (pThunk == nullptr)
         return E_POINTER;
-
     if (Module == nullptr)
         Module = GetModuleHandleW(nullptr);
 
@@ -43,7 +40,6 @@ HRESULT XWineGetImport(_In_opt_ HMODULE Module, _In_ HMODULE ImportModule, _In_ 
     {
         if (GetModuleHandleA((LPCSTR)((PBYTE)Module + peImports[i].Name)) != ImportModule)
             continue;
-
         auto iatThunks = (PIMAGE_THUNK_DATA)((PBYTE)Module + peImports[i].FirstThunk);
         auto intThunks = (PIMAGE_THUNK_DATA)((PBYTE)Module + peImports[i].OriginalFirstThunk);
 
@@ -53,24 +49,20 @@ HRESULT XWineGetImport(_In_opt_ HMODULE Module, _In_ HMODULE ImportModule, _In_ 
             {
                 if (!IS_INTRESOURCE(Import))
                     continue;
-
                 if (((intThunks[j].u1.Ordinal & ~IMAGE_ORDINAL_FLAG) == (ULONG_PTR)Import))
                 {
                     *pThunk = &iatThunks[j];
                     return S_OK;
                 }
-
                 continue;
             }
 
             if (strcmp(((PIMAGE_IMPORT_BY_NAME)((PBYTE)Module + intThunks[j].u1.AddressOfData))->Name, Import))
                 continue;
-
             *pThunk = &iatThunks[j];
             return S_OK;
         }
     }
-
     *pThunk = nullptr;
     return E_FAIL;
 }
@@ -85,12 +77,9 @@ HRESULT XWinePatchImport(_In_opt_ HMODULE Module, _In_ HMODULE ImportModule, _In
 
     if (!VirtualProtect(&pThunk->u1.Function, sizeof(ULONG_PTR), PAGE_READWRITE, &protect))
         return GetLastError();
-
     pThunk->u1.Function = (ULONG_PTR)Function;
-
     if (!VirtualProtect(&pThunk->u1.Function, sizeof(ULONG_PTR), protect, &protect))
         return GetLastError();
-
     return S_OK;
 }
 
@@ -100,7 +89,6 @@ HRESULT PatchNeededImports(_In_opt_ HMODULE Module, _In_ HMODULE ImportModule, _
     HRESULT hr = XWineGetImport(Module, ImportModule, Import, &pThunk);
     if (FAILED(hr))
         return hr;
-
     return XWinePatchImport(Module, ImportModule, Import, Function);
 }
 
@@ -109,19 +97,13 @@ HMODULE GetRuntimeModule()
     std::array<const wchar_t *, 3> modules = {L"vccorlib140.dll", L"vccorlib110.dll", L"vccorlib120.dll"};
     static HMODULE hModule = nullptr;
     if (hModule != nullptr)
-    {
         return hModule;
-    }
-
     for (auto &module : modules)
     {
         hModule = GetModuleHandleW(module);
         if (hModule != nullptr)
-        {
             break;
-        }
     }
-
     return hModule;
 }
 
@@ -141,20 +123,15 @@ HRESULT __stdcall EraGetForCurrentThread(ICoreWindowStatic *pThis, CoreWindow **
 {
     HRESULT hr = TrueGetForCurrentThread(pThis, ppWindow);
     if (FAILED(hr))
-    {
         return hr;
-    }
-
     if (*ppWindow == NULL)
-    {
         return hr;
-    }
 
-    if (IsXboxCallee()) {
-        winDurango->log.Log("WinDurango::KernelX", "EraGetForCurrentThread: wrapping window {:p}", (void*)*ppWindow);
+    if (IsXboxCallee())
+    {
+        winDurango->log.Log("WinDurango::KernelX", "EraGetForCurrentThread: wrapping window {:p}", (void *)*ppWindow);
         *reinterpret_cast<ICoreWindowEra **>(ppWindow) = new CoreWindowEra(*ppWindow);
     }
-
     return hr;
 }
 
@@ -166,7 +143,6 @@ HWND __stdcall EraCreateWindowInBandEx(DWORD dwExStyle, LPCWSTR lpClassName, LPC
     {
         dwExStyle &= ~WS_EX_NOREDIRECTIONBITMAP;
     }
-
     return TrueCreateWindowInBandEx(dwExStyle, lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent,
                                     hMenu, hInstance, lpParam, dwBand, dwTypeFlags);
 }
@@ -180,21 +156,17 @@ HRESULT __stdcall EraCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWOR
 
     if (riid == __uuidof(IMMDeviceEnumerator))
     {
-        *ppv = new MMDeviceEnumeratorWrapper(static_cast<IMMDeviceEnumerator*>(*ppv));
+        *ppv = new MMDeviceEnumeratorWrapper(static_cast<IMMDeviceEnumerator *>(*ppv));
         return S_OK;
     }
-
     return hr;
 }
 
 static void WdRoInitializeLibraries()
 {
-    static std::vector<std::wstring> s_RoLibraryNames = {
-        L"Microsoft.Xbox.GameChat.dll",
-        L"Microsoft.Xbox.Services.dll",
-        L"windows.kinect.dll",
-        L"windows.media.devices.dll"
-    };
+    static std::vector<std::wstring> s_RoLibraryNames = {L"Microsoft.Xbox.GameChat.dll", L"Microsoft.Xbox.Services.dll",
+                                                         L"windows.kinect.dll", L"windows.media.devices.dll",
+                                                         L"SystemUI.Api.dll"};
 
     for (auto name : s_RoLibraryNames)
     {
@@ -204,8 +176,9 @@ static void WdRoInitializeLibraries()
             if (auto pfn = GetProcAddress(dll, "DllGetActivationFactory"); pfn != nullptr)
             {
                 g_RoEntryPoints.push_back(reinterpret_cast<PFNGETACTIVATIONFACTORY>(pfn));
-
-                XWinePatchImport(dll, GetRuntimeModule(), "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z", GetActivationFactoryRedirect);
+                XWinePatchImport(dll, GetRuntimeModule(),
+                                 "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z",
+                                 GetActivationFactoryRedirect);
             }
         }
     }
@@ -214,8 +187,9 @@ static void WdRoInitializeLibraries()
         if (auto pfn = GetProcAddress(dll, "GetActivationFactory"); pfn != nullptr)
         {
             g_RoEntryPoints.push_back(reinterpret_cast<PFNGETACTIVATIONFACTORY>(pfn));
-
-            XWinePatchImport(dll, GetRuntimeModule(), "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z", GetActivationFactoryRedirect);
+            XWinePatchImport(dll, GetRuntimeModule(),
+                             "?GetActivationFactoryByPCWSTR@@YAJPEAXAEAVGuid@Platform@@PEAPEAX@Z",
+                             GetActivationFactoryRedirect);
         }
     }
 }
@@ -224,19 +198,15 @@ static void WdRoInitializeClasses()
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    if (ComPtr<IActivationFactory> factory;
-        SUCCEEDED(WdRoGetActivationFactoryCore(HStringReference{L"Windows.ApplicationModel.Store.CurrentApp"}.Get(), IID_PPV_ARGS(&factory))))
+    if (ComPtr<IActivationFactory> factory; SUCCEEDED(WdRoGetActivationFactoryCore(
+            HStringReference{L"Windows.ApplicationModel.Store.CurrentApp"}.Get(), IID_PPV_ARGS(&factory))))
     {
         DetourAttach(reinterpret_cast<PVOID *>(&TrueActivateInstance), reinterpret_cast<PVOID>(EraAppActivateInstance));
     }
-
     DetourTransactionCommit();
 }
 
-static BOOL WdRoInitialize(
-    _Inout_ PINIT_ONCE InitOnce,
-    _Inout_opt_ PVOID Parameter,
-    _Out_opt_ PVOID *Context)
+static BOOL WdRoInitialize(_Inout_ PINIT_ONCE InitOnce, _Inout_opt_ PVOID Parameter, _Out_opt_ PVOID *Context)
 {
     WdRoInitializeLibraries();
     WdRoInitializeClasses();
@@ -250,14 +220,10 @@ static void WdRoEnsureInitialized()
     InitOnceExecuteOnce(&s_InitOnce, WdRoInitialize, nullptr, nullptr);
 }
 
-_Use_decl_annotations_
-HRESULT WINAPI WdRoGetActivationFactoryCore(
-    HSTRING activatableClassId,
-    REFIID iid,
-    void **factory)
+_Use_decl_annotations_ HRESULT WINAPI WdRoGetActivationFactoryCore(HSTRING activatableClassId, REFIID iid,
+                                                                   void **factory)
 {
     const wchar_t *rawString = WindowsGetStringRawBuffer(activatableClassId, nullptr);
-
     std::wstring rsws(rawString);
     std::string rss(rsws.begin(), rsws.end());
 
@@ -271,7 +237,6 @@ HRESULT WINAPI WdRoGetActivationFactoryCore(
     if (rss == std::string("Windows.ApplicationModel.Core.CoreApplication"))
     {
         ComPtr<IActivationFactory> realFactory;
-
         HRESULT hr = RoGetActivationFactory(Microsoft::WRL::Wrappers::HStringReference::HStringReference(
                                                 RuntimeClass_Windows_ApplicationModel_Core_CoreApplication)
                                                 .Get(),
@@ -279,9 +244,7 @@ HRESULT WINAPI WdRoGetActivationFactoryCore(
 
         if (FAILED(hr))
             return hr;
-
         ComPtr<CoreApplicationEra> wrappedFactory = Make<CoreApplicationEra>(realFactory);
-
         return wrappedFactory.CopyTo(iid, factory);
     }
 
@@ -299,11 +262,11 @@ HRESULT WINAPI WdRoGetActivationFactoryCore(
 
         if (!TrueGetForCurrentThread)
         {
-            *reinterpret_cast<void **>(&TrueGetForCurrentThread) = (*reinterpret_cast<void ***>(coreWindowStatic.Get()))[6];
-
+            *reinterpret_cast<void **>(&TrueGetForCurrentThread) =
+                (*reinterpret_cast<void ***>(coreWindowStatic.Get()))[6];
             DetourTransactionBegin();
             DetourUpdateThread(GetCurrentThread());
-            DetourAttach(reinterpret_cast<PVOID*>(&TrueGetForCurrentThread), EraGetForCurrentThread);
+            DetourAttach(reinterpret_cast<PVOID *>(&TrueGetForCurrentThread), EraGetForCurrentThread);
             DetourTransactionCommit();
         }
 
@@ -316,28 +279,19 @@ HRESULT WINAPI WdRoGetActivationFactoryCore(
         if (wcscmp(rawString, L"Microsoft.Xbox.GameChat.ChatManager") == 0)
         {
             if (SUCCEEDED(pfn(activatableClassId, temp.GetAddressOf())))
-            {
-                HRESULT hr = temp.CopyTo(iid, factory);
-                return hr;
-            }
+                return temp.CopyTo(iid, factory);
         }
 
         if (wcscmp(rawString, L"Windows.Kinect.KinectSensor") == 0)
         {
             if (SUCCEEDED(pfn(activatableClassId, temp.GetAddressOf())))
-            {
-                HRESULT hr = temp.CopyTo(iid, factory);
-                return hr;
-            }
+                return temp.CopyTo(iid, factory);
         }
 
         if (wcscmp(rawString, L"Windows.Media.Devices.MediaDevice") == 0)
         {
             if (SUCCEEDED(pfn(activatableClassId, temp.GetAddressOf())))
-            {
-                HRESULT hr = temp.CopyTo(iid, factory);
-                return hr;
-            }
+                return temp.CopyTo(iid, factory);
         }
 
         if (SUCCEEDED(pfn(activatableClassId, temp.GetAddressOf())))
@@ -350,11 +304,7 @@ HRESULT WINAPI WdRoGetActivationFactoryCore(
     return g_RoGetActivationFactory(activatableClassId, iid, factory);
 }
 
-_Use_decl_annotations_
-HRESULT WINAPI WdRoGetActivationFactory(
-    HSTRING activatableClassId,
-    REFIID iid,
-    void **factory)
+_Use_decl_annotations_ HRESULT WINAPI WdRoGetActivationFactory(HSTRING activatableClassId, REFIID iid, void **factory)
 {
     winDurango = wd::common::WinDurango::GetInstance();
     if (!winDurango->inited())

@@ -47,7 +47,7 @@ file(GLOB WINRT_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/Generated Files/winrt/impl/*.cpp" 
 )
 
-add_library(WinDurango.WinRT SHARED ${SOURCES} ${WINRT_FILES} WinDurango.WinRT.def)
+add_library(WinDurango.WinRT SHARED ${SOURCES} ${WINRT_FILES} WinDurango.WinRT.def "include/WinDurango.WinRT/Windows/Xbox/System/Windows.Xbox.System.GetTokenAndSignatureResult.h" "include/WinDurango.WinRT/Windows/Xbox/UI/Windows.Xbox.UI.SystemUI.h")
 target_include_directories(WinDurango.WinRT PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/WinDurango.WinRT"

@@ -2,35 +2,41 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "version.lib")
+#pragma comment(lib, "onecore.lib")
+#pragma comment(lib, "kernel32.lib")
+
+#include "WinDurango.Common/WinDurango.h"
 #include "unknown.g.h"
 #include "xcom/base.h"
+#include <DirectXTex.h>
 #include <Windows.h>
+#include <algorithm>
 #include <bitset>
+#include <cstdint>
 #include <d3d11_4.h>
 #include <dxgi1_6.h>
 #include <map>
 #include <mutex>
-#include <algorithm>
-#include <cstdint>
-#include <DirectXTex.h>
-#include "WinDurango.Common/WinDurango.h"
+
+
+// --- FIX: Stop Windows.h from ruining our internal function names ---
+#undef CreateFile
+#undef CreateDirectory
+#undef DeleteFile
+#undef CopyFile
+// -------------------------------------------------------------------
+
 
 extern std::shared_ptr<wd::common::WinDurango> p_wd;
 
-// We use that to know the OS version.
-abi_t g_ABI{};
+// --- FIX: Declare variables as extern so they are only created once ---
+extern abi_t g_ABI;
+extern BOOL m_Fence;
+extern std::multimap<void *, void *> g_ResourceMap;
+extern std::mutex g_ResourceMapMutex;
 
-// Immediate Context fence object.
-BOOL m_Fence = TRUE;
-
-// Multimap for placement update
-std::multimap<void *, void *> g_ResourceMap;
-std::mutex g_ResourceMapMutex;
-
-#pragma comment(lib, "onecore.lib")
-#pragma comment(lib, "kernel32.lib")
-
-void GetCombaseVersion()
+// --- FIX: 'inline' tells the linker it's safe to include this function multiple times ---
+inline void GetCombaseVersion()
 {
     DWORD FileVersionSize = GetFileVersionInfoSizeW(L".\\EmbeddedXvd\\Windows\\System32\\combase.dll", NULL);
     if (!FileVersionSize)
@@ -76,8 +82,9 @@ void GetCombaseVersion()
     g_ABI.Revision = revision;
 }
 
-inline void CalculatePitch(uint32_t Width, uint32_t Height, DXGI_FORMAT Format, uint32_t* pRowPitch, uint32_t* pSlicePitch)
-{;
+inline void CalculatePitch(uint32_t Width, uint32_t Height, DXGI_FORMAT Format, uint32_t *pRowPitch,
+                           uint32_t *pSlicePitch)
+{
     SIZE_T rowPitch = 0;
     SIZE_T slicePitch = 0;
     DirectX::ComputePitch(Format, Width, Height, rowPitch, slicePitch);

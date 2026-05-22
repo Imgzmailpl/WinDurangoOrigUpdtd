@@ -4,17 +4,25 @@ bool wd::common::Config::parse()
 {
     try
     {
+        if (!pFile)
+            return false;
+
         pFile->open();
         std::string jsonData = pFile->read();
+
+        // Fix: Prevent JSON parse_error on empty files
+        if (jsonData.empty())
+        {
+            jsonData = "{}";
+        }
+
         data = nlohmann::json::parse(jsonData);
         return true;
     }
-    catch (const std::exception &e)
-    {
-        return false;
-    }
     catch (...)
     {
+        // Fix: Ensure data is ALWAYS a valid object, even if parsing completely fails
+        data = nlohmann::json::object();
         return false;
     }
 }

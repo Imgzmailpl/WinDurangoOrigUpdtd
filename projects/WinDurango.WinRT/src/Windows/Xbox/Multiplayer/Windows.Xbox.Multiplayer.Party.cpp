@@ -1,5 +1,4 @@
 #include "Windows.Xbox.Multiplayer.Party.h"
-#include "Windows.Xbox.Multiplayer.PartyView.h"
 #include "WinDurangoWinRT.h"
 
 namespace winrt::Windows::Xbox::Multiplayer::implementation
@@ -172,7 +171,8 @@ namespace winrt::Windows::Xbox::Multiplayer::implementation
     }
     winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Xbox::Multiplayer::PartyView> Party::GetPartyViewAsyncEx(winrt::Windows::Xbox::Multiplayer::PartyFlags flags)
     {
-        co_return winrt::make<implementation::PartyView>();
+        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Multiplayer", "Unimplemented: GetPartyViewAsyncEx");
+        throw hresult_not_implemented();
     }
     winrt::Windows::Foundation::IAsyncAction Party::RemoveLocalUsersAsync(winrt::Windows::Foundation::Collections::IVectorView<winrt::Windows::Xbox::System::User> localUsersToRemove)
     {

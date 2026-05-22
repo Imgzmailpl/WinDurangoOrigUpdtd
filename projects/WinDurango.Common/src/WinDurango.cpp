@@ -1,6 +1,3 @@
-//
-// Created by DexrnZacAttack on 1/23/26 using zPc-i2.
-//
 #include "WinDurango.Common/WinDurango.h"
 
 #undef CreateFile
@@ -9,10 +6,7 @@ namespace wd::common
 {
     std::shared_ptr<WinDurango> WinDurango::GetInstance()
     {
-        static std::shared_ptr<WinDurango> Instance =
-            std::make_shared<WinDurango>(); // if we don't declare it in src, it will make multiple instances per
-                                            // header import in different libs afaik
-
+        static std::shared_ptr<WinDurango> Instance = std::make_shared<WinDurango>();
         return Instance;
     }
 
@@ -29,6 +23,9 @@ namespace wd::common
         }
         try
         {
+            if (!root)
+                return; // Safety check
+
             rootDir = root;
             rootDir->open();
 
@@ -37,20 +34,29 @@ namespace wd::common
 
             char buf[512];
             std::strftime(buf, sizeof(buf), "%d.%m.%Y", &datetm);
-
             std::string date(buf);
+
             WinDurangoRoot = rootDir->CreateFolder("WinDurango");
+            if (!WinDurangoRoot)
+                return; // Safety check
             WinDurangoRoot->open();
 
             std::shared_ptr<interfaces::storage::File> LogFile =
                 WinDurangoRoot->CreateFile("windurango_log_" + date + ".log");
+
             std::shared_ptr<interfaces::storage::File> ConfigFile = WinDurangoRoot->CreateFile("windurango.json");
 
-            config = Config(ConfigFile);
-            log = Logging(LogFile);
+            if (ConfigFile)
+            {
+                config = Config(ConfigFile);
+                config.parse();
+            }
 
-            config.parse();
-            log.Initialize();
+            if (LogFile)
+            {
+                log = Logging(LogFile);
+                log.Initialize();
+            }
 
             this->_inited = true;
         }

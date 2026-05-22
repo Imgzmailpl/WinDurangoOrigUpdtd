@@ -1,28 +1,74 @@
 #include "WinDurango.WinRT/Windows/ApplicationModel/Windows.ApplicationModel.Package.h"
-
-// 1. WRL Headers (Bypasses C++/WinRT compiler limitations)
 #include <windows.applicationmodel.h>
-#include <windows.storage.h>
-#include <wrl.h>
-#include <wrl/implements.h>
-
-// 2. C++/WinRT Headers (Used ONLY for the internal file path helper)
 #include <windows.h>
+#include <windows.storage.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Storage.h>
+#include <wrl.h>
+#include <wrl/implements.h>
 
 using namespace Microsoft::WRL;
 
 namespace wd_wrl_stubs
 {
+    // Build a fully spoofed Package ID to stop the 0xC0000005 crash!
+    class PackageIdStub : public RuntimeClass<RuntimeClassFlags<WinRt>, ABI::Windows::ApplicationModel::IPackageId>
+    {
+      public:
+        HRESULT STDMETHODCALLTYPE get_Name(HSTRING *value) override
+        {
+            WindowsCreateString(L"Anthem", 6, value);
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE get_Version(ABI::Windows::ApplicationModel::PackageVersion *value) override
+        {
+            value->Major = 1;
+            value->Minor = 0;
+            value->Build = 0;
+            value->Revision = 64;
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE get_Architecture(ABI::Windows::System::ProcessorArchitecture *value) override
+        {
+            *value = ABI::Windows::System::ProcessorArchitecture_X64;
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE get_ResourceId(HSTRING *value) override
+        {
+            WindowsCreateString(L"", 0, value);
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE get_Publisher(HSTRING *value) override
+        {
+            WindowsCreateString(L"CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US", 76,
+                                value);
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE get_PublisherId(HSTRING *value) override
+        {
+            WindowsCreateString(L"8wekyb3d8bbwe", 13, value);
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE get_FullName(HSTRING *value) override
+        {
+            WindowsCreateString(L"Anthem_1.0.0.64_x64__8wekyb3d8bbwe", 34, value);
+            return S_OK;
+        }
+        HRESULT STDMETHODCALLTYPE get_FamilyName(HSTRING *value) override
+        {
+            WindowsCreateString(L"Anthem_8wekyb3d8bbwe", 20, value);
+            return S_OK;
+        }
+    };
+
     // Build the raw ABI object
     class PackageStub : public RuntimeClass<RuntimeClassFlags<WinRt>, ABI::Windows::ApplicationModel::IPackage>
     {
       public:
         HRESULT STDMETHODCALLTYPE get_Id(ABI::Windows::ApplicationModel::IPackageId **value) override
         {
-            *value = nullptr;
-            return S_OK;
+            auto id = Make<PackageIdStub>();
+            return id.CopyTo(value); // FIX: Return actual ID data, not nullptr!
         }
 
         HRESULT STDMETHODCALLTYPE get_InstalledLocation(ABI::Windows::Storage::IStorageFolder **value) override
@@ -33,7 +79,6 @@ namespace wd_wrl_stubs
             size_t pos = ws.find_last_of(L"\\/");
             std::wstring dir = (pos != std::wstring::npos) ? ws.substr(0, pos) : L".";
 
-            // LOG THE EXACT PATH TO THE DEBUGGER
             OutputDebugStringW((L"[WinDurango] VFS Mounting Directory: " + dir + L"\n").c_str());
 
             try
@@ -63,8 +108,6 @@ namespace wd_wrl_stubs
             return S_OK;
         }
 
-        // NOTE: get_IsDevelopmentMode removed because it belongs to IPackage2!
-
         HRESULT STDMETHODCALLTYPE
         get_Dependencies(__FIVectorView_1_Windows__CApplicationModel__CPackage **value) override
         {
@@ -92,7 +135,6 @@ namespace wd_wrl_stubs
     };
 } // namespace wd_wrl_stubs
 
-// Export function for WinDurangoWinRT.cpp
 extern "C" void *GetApplicationPackageFactory()
 {
     auto factory = Make<wd_wrl_stubs::PackageFactory>();

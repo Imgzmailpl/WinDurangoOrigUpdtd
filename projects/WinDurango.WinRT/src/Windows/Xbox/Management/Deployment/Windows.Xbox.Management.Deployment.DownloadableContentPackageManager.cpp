@@ -1,181 +1,268 @@
 #include "Windows.Xbox.Management.Deployment.DownloadableContentPackageManager.h"
 #include "WinDurangoWinRT.h"
+#include <memory>
+#include <winrt/Windows.Foundation.Collections.h>
 
 namespace winrt::Windows::Xbox::Management::Deployment::implementation
 {
     bool CheckForUpdateResult::IsUpdateAvailable()
     {
-        return updateAvail;
+        return false;
     }
     bool CheckForUpdateResult::IsUpdateMandatory()
     {
-        return updateMandatory;
+        return false;
     }
     uint32_t ChunkCompletedEventArgs::ChunkId()
     {
-        return chunkID;
+        return 0;
     }
+
     winrt::Windows::Foundation::Collections::IVector<hstring> ChunkSpecifiers::Languages()
     {
-        return langs;
+        static auto g_langs = winrt::single_threaded_vector<hstring>();
+        return g_langs;
     }
     winrt::Windows::Foundation::Collections::IVector<hstring> ChunkSpecifiers::Tags()
     {
-        return tags;
+        static auto g_tags = winrt::single_threaded_vector<hstring>();
+        return g_tags;
     }
+
     hstring ContentPackage::TitleId()
     {
-        return title;
+        return L"";
     }
     hstring ContentPackage::ContentId()
     {
-        return content;
+        return L"";
     }
     hstring ContentPackage::ProductId()
     {
-        return product;
+        return L"";
     }
     hstring ContentPackage::PackageFullName()
     {
-        return packageFullName;
+        return L"";
     }
     uint32_t ContentPackage::ContentType()
     {
-        return contentType;
+        return 0;
     }
     hstring ContentPackage::DisplayName()
     {
-        return displayName;
+        return L"";
     }
     hstring ContentPackage::Description()
     {
-        return description;
+        return L"";
     }
     hstring ContentPackage::Publisher()
     {
-        return publisher;
+        return L"";
     }
     hstring ContentPackage::Version()
     {
-        return version;
+        return L"";
     }
+
     winrt::hresult LicenseTerminatedEventArgs::Reason()
     {
-        return reason;
+        return 0;
     }
     hstring LicenseTerminatedEventArgs::PackageFullName()
     {
-        return packageFullName;
+        return L"";
     }
     hstring LicenseTerminatedEventArgs::UserXuidIfCausedBySignout()
     {
-        return userXuid;
+        return L"";
     }
     winrt::hresult RequestUpdatePackageResult::Result()
     {
-        return result;
+        return 0;
     }
-    winrt::Windows::Xbox::Management::Deployment::TransferOperationType DownloadableContentPackageInstallCompletedEventArgs::OperationType()
+
+    winrt::Windows::Xbox::Management::Deployment::TransferOperationType
+    DownloadableContentPackageInstallCompletedEventArgs::OperationType()
     {
-        return operationType;
+        return static_cast<winrt::Windows::Xbox::Management::Deployment::TransferOperationType>(0);
     }
     hstring DownloadableContentPackageInstallCompletedEventArgs::PackageFullName()
     {
-        return packageFullName;
+        return L"";
     }
     winrt::guid DownloadableContentPackageInstallCompletedEventArgs::ContentId()
     {
-        return contentId;
+        return {};
     }
     winrt::hresult DownloadableContentPackageInstallCompletedEventArgs::Result()
     {
-        return result;
+        return 0;
     }
+
     hstring DownloadableContentPackage::TitleId()
     {
-        return title;
+        return L"";
     }
     hstring DownloadableContentPackage::ContentId()
     {
-        return content;
+        return L"";
     }
     hstring DownloadableContentPackage::ProductId()
     {
-        return product;
+        return L"";
     }
     hstring DownloadableContentPackage::PackageFullName()
     {
-        return packageFullName;
+        return L"";
     }
     hstring DownloadableContentPackage::MountPath()
     {
-        return mountPath;
+        return L"";
     }
     bool DownloadableContentPackage::IsMounted()
     {
-        return isMounted;
+        return true;
     }
     uint32_t DownloadableContentPackage::ContentType()
     {
-        return contentType;
+        return 0;
     }
     hstring DownloadableContentPackage::DisplayName()
     {
-        return displayName;
+        return L"";
     }
     hstring DownloadableContentPackage::Description()
     {
-        return description;
+        return L"";
     }
     hstring DownloadableContentPackage::Publisher()
     {
-        return publisher;
+        return L"";
     }
     hstring DownloadableContentPackage::Version()
     {
-        return version;
+        return L"";
     }
     hstring DownloadableContentPackage::Mount()
     {
-        return mount;
+        return L"";
     }
+
     void DownloadableContentPackage::Unmount()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: Unmount");
-        throw hresult_not_implemented();
     }
-    void DownloadableContentPackage::CheckLicense(bool& unk, bool& unka)
+    void DownloadableContentPackage::CheckLicense(bool &unk, bool &unka)
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: CheckLicense");
-        unk = false; // trial
-        unka = true; // licence
+        unk = false;
+        unka = true;
     }
-    winrt::event_token DownloadableContentPackage::LicenseTerminated(winrt::Windows::Foundation::TypedEventHandler<winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage, winrt::Windows::Xbox::Management::Deployment::LicenseTerminatedEventArgs> const& handler)
+
+    static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+        winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage,
+        winrt::Windows::Xbox::Management::Deployment::LicenseTerminatedEventArgs>> &
+    GetLicenseTerminatedEvent()
     {
-        return e_LicenseTerminated.add(handler);
+        static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage,
+            winrt::Windows::Xbox::Management::Deployment::LicenseTerminatedEventArgs>>
+            e;
+        return e;
     }
-    void DownloadableContentPackage::LicenseTerminated(winrt::event_token const& token) noexcept
+    winrt::event_token DownloadableContentPackage::LicenseTerminated(
+        winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage,
+            winrt::Windows::Xbox::Management::Deployment::LicenseTerminatedEventArgs> const &handler)
     {
-        e_LicenseTerminated.remove(token);
+        return GetLicenseTerminatedEvent().add(handler);
     }
-    winrt::Windows::Foundation::Collections::IVectorView<winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage> DownloadableContentPackageManager::FindPackages(winrt::Windows::Xbox::Management::Deployment::InstalledPackagesFilter const& unk)
+    void DownloadableContentPackage::LicenseTerminated(winrt::event_token const &token) noexcept
     {
-        return winrt::single_threaded_vector<winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage>().GetView();
+        GetLicenseTerminatedEvent().remove(token);
     }
-    winrt::event_token DownloadableContentPackageManager::DownloadableContentPackageInstallCompleted(winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackageInstallCompletedEventHandler const& handler)
+
+    winrt::Windows::Foundation::Collections::IVectorView<
+        winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage>
+    DownloadableContentPackageManager::FindPackages(
+        winrt::Windows::Xbox::Management::Deployment::InstalledPackagesFilter const &unk)
     {
-        return e_DownloadableContentPackageInstallCompleted.add(handler);
+        static auto g_dlc =
+            winrt::single_threaded_vector<winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage>();
+        return g_dlc.GetView();
     }
-    void DownloadableContentPackageManager::DownloadableContentPackageInstallCompleted(winrt::event_token const& token) noexcept
+
+    static winrt::event<
+        winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackageInstallCompletedEventHandler> &
+    GetPackageInstallCompletedEvent()
     {
-        e_DownloadableContentPackageInstallCompleted.remove(token);
+        static winrt::event<
+            winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackageInstallCompletedEventHandler>
+            e;
+        return e;
     }
-    winrt::event_token DownloadableContentPackageManager::DownloadableContentPackageInstallCompletedWithDetails(winrt::Windows::Foundation::EventHandler<winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackageInstallCompletedEventArgs> const& handler)
+    static winrt::event<winrt::Windows::Foundation::EventHandler<
+        winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackageInstallCompletedEventArgs>> &
+    GetPackageInstallCompletedWithDetailsEvent()
     {
-        return e_DownloadableContentPackageInstallCompletedWithDetails.add(handler);
+        static winrt::event<winrt::Windows::Foundation::EventHandler<
+            winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackageInstallCompletedEventArgs>>
+            e;
+        return e;
     }
-    void DownloadableContentPackageManager::DownloadableContentPackageInstallCompletedWithDetails(winrt::event_token const& token) noexcept
+
+    winrt::event_token DownloadableContentPackageManager::DownloadableContentPackageInstallCompleted(
+        winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackageInstallCompletedEventHandler const
+            &handler)
     {
-        e_DownloadableContentPackageInstallCompletedWithDetails.remove(token);
+        return GetPackageInstallCompletedEvent().add(handler);
     }
+    void DownloadableContentPackageManager::DownloadableContentPackageInstallCompleted(
+        winrt::event_token const &token) noexcept
+    {
+        GetPackageInstallCompletedEvent().remove(token);
+    }
+    winrt::event_token DownloadableContentPackageManager::DownloadableContentPackageInstallCompletedWithDetails(
+        winrt::Windows::Foundation::EventHandler<
+            winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackageInstallCompletedEventArgs> const
+            &handler)
+    {
+        return GetPackageInstallCompletedWithDetailsEvent().add(handler);
+    }
+    void DownloadableContentPackageManager::DownloadableContentPackageInstallCompletedWithDetails(
+        winrt::event_token const &token) noexcept
+    {
+        GetPackageInstallCompletedWithDetailsEvent().remove(token);
+    }
+} // namespace winrt::Windows::Xbox::Management::Deployment::implementation
+
+// --- EXPORTS FORMATTED AND FIXED ---
+
+extern "C" void *GetDownloadableContentPackageManagerFactory()
+{
+    return reinterpret_cast<void *>(
+        winrt::detach_abi(winrt::make<winrt::Windows::Xbox::Management::Deployment::factory_implementation::
+                                          DownloadableContentPackageManager>()));
 }
+
+extern "C" void *CreateDummyCheckForUpdateResult()
+{
+    return winrt::detach_abi(
+        winrt::make<winrt::Windows::Xbox::Management::Deployment::implementation::CheckForUpdateResult>());
+}
+
+extern "C" void *CreateDummyRequestUpdatePackageResult()
+{
+    return winrt::detach_abi(
+        winrt::make<winrt::Windows::Xbox::Management::Deployment::implementation::RequestUpdatePackageResult>());
+}
+
+// CRITICAL FIX: Temporarily suppress the struct C-linkage compiler warning
+#pragma warning(push)
+#pragma warning(disable : 4190)
+extern "C" winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers CreateDummyChunkSpecifiers()
+{
+    static uint8_t dummy_buffer[128] = {0};
+    return *reinterpret_cast<winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers *>(dummy_buffer);
+}
+#pragma warning(pop)

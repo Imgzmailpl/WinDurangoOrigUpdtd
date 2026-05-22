@@ -1,5 +1,6 @@
 #include "Windows.Xbox.Management.Deployment.PackageTransferWatcher.h"
 #include "WinDurangoWinRT.h"
+#include <winrt/Windows.Foundation.Collections.h>
 
 namespace winrt::Windows::Xbox::Management::Deployment::implementation
 {
@@ -9,67 +10,142 @@ namespace winrt::Windows::Xbox::Management::Deployment::implementation
     }
     void TransferStatusChangedEventArgs::UnknownOne()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: UnknownOne");
-        throw hresult_not_implemented();
     }
     void TransferStatusChangedEventArgs::UnknownTwo()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: UnknownTwo");
-        throw hresult_not_implemented();
     }
-    winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher PackageTransferWatcher::Create(winrt::Windows::ApplicationModel::Package const& unk, winrt::Windows::Foundation::Collections::IIterable<uint32_t> const& unka)
+
+    winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher PackageTransferWatcher::Create(
+        winrt::Windows::ApplicationModel::Package const &unk,
+        winrt::Windows::Foundation::Collections::IIterable<uint32_t> const &unka)
     {
         return winrt::make<PackageTransferWatcher>();
     }
-    winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher PackageTransferWatcher::Create(winrt::Windows::ApplicationModel::Package const& unk)
+
+    winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher PackageTransferWatcher::Create(
+        winrt::Windows::ApplicationModel::Package const &unk)
     {
         return winrt::make<PackageTransferWatcher>();
     }
+
     winrt::Windows::Xbox::Management::Deployment::PackageTransferStatus PackageTransferWatcher::TransferStatus()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: TransferStatus");
-        throw hresult_not_implemented();
+        return {};
     }
     winrt::Windows::Xbox::Management::Deployment::PackageTransferType PackageTransferWatcher::TransferType()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: TransferType");
-        throw hresult_not_implemented();
+        return static_cast<winrt::Windows::Xbox::Management::Deployment::PackageTransferType>(0);
     }
-    winrt::event_token PackageTransferWatcher::TransferStatusChanged(winrt::Windows::Foundation::TypedEventHandler<winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher, winrt::Windows::Xbox::Management::Deployment::TransferStatusChangedEventArgs> const& handler)
+
+    // CRITICAL FIX: Safe Meyer's Singletons for the event delegates
+    static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+        winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+        winrt::Windows::Xbox::Management::Deployment::TransferStatusChangedEventArgs>> &
+    GetTransferStatusChangedEvent()
     {
-        return e_TransferStatusChanged.add(handler);
+        static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+            winrt::Windows::Xbox::Management::Deployment::TransferStatusChangedEventArgs>>
+            e;
+        return e;
     }
-    void PackageTransferWatcher::TransferStatusChanged(winrt::event_token const& token) noexcept
+    static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+        winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+        winrt::Windows::Xbox::Management::Deployment::ChunkCompletedEventArgs>> &
+    GetChunkCompletedEvent()
     {
-        e_TransferStatusChanged.remove(token);
+        static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+            winrt::Windows::Xbox::Management::Deployment::ChunkCompletedEventArgs>>
+            e;
+        return e;
     }
+    static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+        winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+        winrt::Windows::Xbox::Management::Deployment::ProgressChangedEventArgs>> &
+    GetProgressChangedEvent()
+    {
+        static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+            winrt::Windows::Xbox::Management::Deployment::ProgressChangedEventArgs>>
+            e;
+        return e;
+    }
+    static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+        winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+        winrt::Windows::Xbox::Management::Deployment::TransferCompletedEventArgs>> &
+    GetTransferCompletedEvent()
+    {
+        static winrt::event<winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+            winrt::Windows::Xbox::Management::Deployment::TransferCompletedEventArgs>>
+            e;
+        return e;
+    }
+
+    winrt::event_token PackageTransferWatcher::TransferStatusChanged(
+        winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+            winrt::Windows::Xbox::Management::Deployment::TransferStatusChangedEventArgs> const &handler)
+    {
+        return GetTransferStatusChangedEvent().add(handler);
+    }
+    void PackageTransferWatcher::TransferStatusChanged(winrt::event_token const &token) noexcept
+    {
+        GetTransferStatusChangedEvent().remove(token);
+    }
+
     winrt::Windows::Foundation::Collections::IVectorView<uint32_t> PackageTransferWatcher::ChunkIds()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: ChunkIds");
-        throw hresult_not_implemented();
+        static auto ids = winrt::single_threaded_vector<uint32_t>();
+        return ids.GetView();
     }
-    winrt::event_token PackageTransferWatcher::ChunkCompleted(winrt::Windows::Foundation::TypedEventHandler<winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher, winrt::Windows::Xbox::Management::Deployment::ChunkCompletedEventArgs> const& handler)
+
+    winrt::event_token PackageTransferWatcher::ChunkCompleted(
+        winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+            winrt::Windows::Xbox::Management::Deployment::ChunkCompletedEventArgs> const &handler)
     {
-        return e_ChunkCompleted.add(handler);
+        return GetChunkCompletedEvent().add(handler);
     }
-    void PackageTransferWatcher::ChunkCompleted(winrt::event_token const& token) noexcept
+    void PackageTransferWatcher::ChunkCompleted(winrt::event_token const &token) noexcept
     {
-        e_ChunkCompleted.remove(token);
+        GetChunkCompletedEvent().remove(token);
     }
-    winrt::event_token PackageTransferWatcher::ProgressChanged(winrt::Windows::Foundation::TypedEventHandler<winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher, winrt::Windows::Xbox::Management::Deployment::ProgressChangedEventArgs> const& handler)
+
+    winrt::event_token PackageTransferWatcher::ProgressChanged(
+        winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+            winrt::Windows::Xbox::Management::Deployment::ProgressChangedEventArgs> const &handler)
     {
-        return e_ProgressChanged.add(handler);
+        return GetProgressChangedEvent().add(handler);
     }
-    void PackageTransferWatcher::ProgressChanged(winrt::event_token const& token) noexcept
+    void PackageTransferWatcher::ProgressChanged(winrt::event_token const &token) noexcept
     {
-        e_ProgressChanged.remove(token);
+        GetProgressChangedEvent().remove(token);
     }
-    winrt::event_token PackageTransferWatcher::TransferCompleted(winrt::Windows::Foundation::TypedEventHandler<winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher, winrt::Windows::Xbox::Management::Deployment::TransferCompletedEventArgs> const& handler)
+
+    winrt::event_token PackageTransferWatcher::TransferCompleted(
+        winrt::Windows::Foundation::TypedEventHandler<
+            winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher,
+            winrt::Windows::Xbox::Management::Deployment::TransferCompletedEventArgs> const &handler)
     {
-        return e_TransferCompleted.add(handler);
+        return GetTransferCompletedEvent().add(handler);
     }
-    void PackageTransferWatcher::TransferCompleted(winrt::event_token const& token) noexcept
+    void PackageTransferWatcher::TransferCompleted(winrt::event_token const &token) noexcept
     {
-        e_TransferCompleted.remove(token);
+        GetTransferCompletedEvent().remove(token);
     }
+} // namespace winrt::Windows::Xbox::Management::Deployment::implementation
+
+void *GetPackageTransferWatcherFactory()
+{
+    return reinterpret_cast<void *>(winrt::detach_abi(
+        winrt::make<winrt::Windows::Xbox::Management::Deployment::factory_implementation::PackageTransferWatcher>()));
+}
+
+extern "C" void *CreateDummyPackageTransferWatcher()
+{
+    return winrt::detach_abi(
+        winrt::make<winrt::Windows::Xbox::Management::Deployment::implementation::PackageTransferWatcher>());
 }

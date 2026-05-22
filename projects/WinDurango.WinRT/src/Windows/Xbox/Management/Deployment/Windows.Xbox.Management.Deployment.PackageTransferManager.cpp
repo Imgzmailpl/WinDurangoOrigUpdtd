@@ -1,81 +1,117 @@
 #include "Windows.Xbox.Management.Deployment.PackageTransferManager.h"
 #include "WinDurangoWinRT.h"
+#include "Windows.Xbox.Management.Deployment.PackageTransferWatcher.h"
+#include <winrt/Windows.Foundation.h>
+
+extern "C" void *CreateDummyChunkSpecifiers();
 
 namespace winrt::Windows::Xbox::Management::Deployment::implementation
 {
-    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Xbox::Management::Deployment::CheckForUpdateResult> PackageTransferManager::CheckForUpdateAsync(winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage unk)
+    // One single immortal handle for the whole process
+    static HANDLE GetDeadlockEvent()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: CheckForUpdateAsync");
-        throw hresult_not_implemented();
+        static HANDLE h = CreateEvent(nullptr, true, false, nullptr);
+        return h;
     }
-    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Xbox::Management::Deployment::RequestUpdatePackageResult> PackageTransferManager::RequestUpdatePackageAsync(winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage unk)
+
+    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Xbox::Management::Deployment::CheckForUpdateResult>
+    PackageTransferManager::CheckForUpdateAsync(
+        winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage unk)
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: RequestUpdatePackageAsync");
-        throw hresult_not_implemented();
+        co_await winrt::resume_on_signal(GetDeadlockEvent());
+        co_return nullptr;
     }
-    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Xbox::Management::Deployment::RequestUpdatePackageResult> PackageTransferManager::RequestUpdateCurrentPackageAsync()
+
+    winrt::Windows::Foundation::IAsyncOperation<
+        winrt::Windows::Xbox::Management::Deployment::RequestUpdatePackageResult>
+    PackageTransferManager::RequestUpdatePackageAsync(
+        winrt::Windows::Xbox::Management::Deployment::DownloadableContentPackage unk)
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: RequestUpdateCurrentPackageAsync");
-        throw hresult_not_implemented();
+        co_await winrt::resume_on_signal(GetDeadlockEvent());
+        co_return nullptr;
     }
+
+    winrt::Windows::Foundation::IAsyncOperation<
+        winrt::Windows::Xbox::Management::Deployment::RequestUpdatePackageResult>
+    PackageTransferManager::RequestUpdateCurrentPackageAsync()
+    {
+        co_await winrt::resume_on_signal(GetDeadlockEvent());
+        co_return nullptr;
+    }
+
+    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher>
+    PackageTransferManager::AddChunkSpecifiersAsync(winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers unk)
+    {
+        co_await winrt::resume_on_signal(GetDeadlockEvent());
+        co_return nullptr;
+    }
+
+    winrt::Windows::Foundation::IAsyncAction PackageTransferManager::RemoveChunkSpecifiersAsync(
+        winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers unk)
+    {
+        co_await winrt::resume_on_signal(GetDeadlockEvent());
+        co_return;
+    }
+
     winrt::Windows::Xbox::Management::Deployment::PackageTransferManager PackageTransferManager::Current()
     {
-        return winrt::make<PackageTransferManager>();
+        static auto instance = winrt::make<PackageTransferManager>();
+        return instance;
     }
-    winrt::Windows::Xbox::Management::Deployment::PackageTransferManager PackageTransferManager::Create(winrt::Windows::ApplicationModel::Package const &package)
+
+    winrt::Windows::Xbox::Management::Deployment::PackageTransferManager PackageTransferManager::Create(
+        winrt::Windows::ApplicationModel::Package const &package)
     {
-        return winrt::make<PackageTransferManager>();
+        return PackageTransferManager::Current();
     }
+
     winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers PackageTransferManager::AvailableChunkSpecifiers()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: AvailableChunkSpecifiers");
-        throw hresult_not_implemented();
+        winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers obj{nullptr};
+        winrt::attach_abi(obj, CreateDummyChunkSpecifiers());
+        return obj;
     }
-    winrt::Windows::Xbox::Management::Deployment::InstallationState PackageTransferManager::GetInstallationState(winrt::Windows::Foundation::Collections::IIterable<uint32_t> const& unk)
+
+    winrt::Windows::Xbox::Management::Deployment::InstallationState PackageTransferManager::GetInstallationState(
+        winrt::Windows::Foundation::Collections::IIterable<uint32_t> const &unk)
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: GetInstallationState(Iterable)");
-        throw hresult_not_implemented();
+        return static_cast<winrt::Windows::Xbox::Management::Deployment::InstallationState>(0);
     }
-    winrt::Windows::Xbox::Management::Deployment::InstallationState PackageTransferManager::GetInstallationState(winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers const& unk)
+    winrt::Windows::Xbox::Management::Deployment::InstallationState PackageTransferManager::GetInstallationState(
+        winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers const &unk)
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: GetInstallationState");
-        throw hresult_not_implemented();
-    }
-    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Xbox::Management::Deployment::PackageTransferWatcher> PackageTransferManager::AddChunkSpecifiersAsync(winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers unk)
-    {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: AddChunkSpecifiersAsync");
-        throw hresult_not_implemented();
-    }
-    winrt::Windows::Foundation::IAsyncAction PackageTransferManager::RemoveChunkSpecifiersAsync(winrt::Windows::Xbox::Management::Deployment::ChunkSpecifiers unk)
-    {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: RemoveChunkSpecifiersAsync");
-        return {};
+        return static_cast<winrt::Windows::Xbox::Management::Deployment::InstallationState>(0);
     }
     winrt::Windows::Xbox::Management::Deployment::PackageTransferType PackageTransferManager::TransferType()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: TransferType");
-        throw hresult_not_implemented();
+        return static_cast<winrt::Windows::Xbox::Management::Deployment::PackageTransferType>(0);
     }
-    void PackageTransferManager::UpdateInstallOrder(winrt::Windows::Foundation::Collections::IIterable<uint32_t> const& unk, winrt::Windows::Xbox::Management::Deployment::UpdateInstallOrderBehavior const& unka)
+    void PackageTransferManager::UpdateInstallOrder(
+        winrt::Windows::Foundation::Collections::IIterable<uint32_t> const &unk,
+        winrt::Windows::Xbox::Management::Deployment::UpdateInstallOrderBehavior const &unka)
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: UpdateInstallOrder");
-        throw hresult_not_implemented();
     }
     bool PackageTransferManager::IsChunkInstalled(uint32_t chunkId)
     {
         return true;
     }
-    bool PackageTransferManager::AreChunksInstalled(winrt::Windows::Foundation::Collections::IIterable<uint32_t> const &chunkIds)
+    bool PackageTransferManager::AreChunksInstalled(
+        winrt::Windows::Foundation::Collections::IIterable<uint32_t> const &chunkIds)
     {
         return true;
     }
-    uint32_t PackageTransferManager::FindChunkFromFile(hstring const& unk)
+    uint32_t PackageTransferManager::FindChunkFromFile(hstring const &unk)
     {
         return 0;
     }
     winrt::Windows::Xbox::Management::Deployment::PackageTransferStatus PackageTransferManager::TransferStatus()
     {
-        p_wd->log.Warn("WinDurango::WinRT::Windows::Xbox::Management::Deployment", "Unimplemented: TransferStatus");
-        throw hresult_not_implemented();
+        return {};
     }
+} // namespace winrt::Windows::Xbox::Management::Deployment::implementation
+
+void *GetPackageTransferManagerFactory()
+{
+    return reinterpret_cast<void *>(winrt::detach_abi(
+        winrt::make<winrt::Windows::Xbox::Management::Deployment::factory_implementation::PackageTransferManager>()));
 }

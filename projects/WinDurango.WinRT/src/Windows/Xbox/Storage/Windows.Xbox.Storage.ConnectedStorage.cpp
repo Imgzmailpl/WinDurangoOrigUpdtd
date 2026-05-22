@@ -12,12 +12,13 @@ winrt::Windows::Foundation::IAsyncAction wd::WinRT::ConnectedStorage::CreateCont
 
 winrt::Windows::Foundation::IAsyncAction wd::WinRT::ConnectedStorage::Read(winrt::hstring containerName, winrt::Windows::Foundation::Collections::IMapView<winrt::hstring, winrt::Windows::Storage::Streams::IBuffer> data) const
 {
-    if (!DoesFolderExist(m_storagePath + L"\\" + containerName))
+    if (!co_await DoesFolderExist(m_storagePath + L"\\" + containerName))
     {
         co_await CreateContainer(containerName);
     }
 
-    auto folder = co_await winrt::Windows::Storage::StorageFolder::GetFolderFromPathAsync(m_storagePath + L"\\" + containerName);
+    auto folder =
+        co_await winrt::Windows::Storage::StorageFolder::GetFolderFromPathAsync(m_storagePath + L"\\" + containerName);
 
     for (auto const &pair : data)
     {
@@ -121,9 +122,12 @@ winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collecti
     co_return blobInfoVector.GetView();
 }
 
-winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVectorView<winrt::Windows::Xbox::Storage::ContainerInfo2>> wd::WinRT::ConnectedStorage::GetContainerInfo2Async()
+winrt::Windows::Foundation::IAsyncOperation<
+    winrt::Windows::Foundation::Collections::IVectorView<winrt::Windows::Xbox::Storage::ContainerInfo2>>
+wd::WinRT::ConnectedStorage::GetContainerInfo2Async()
 {
-    winrt::Windows::Foundation::Collections::IVector<winrt::Windows::Xbox::Storage::ContainerInfo2> containerInfoVector = winrt::single_threaded_vector<winrt::Windows::Xbox::Storage::ContainerInfo2>();
+    winrt::Windows::Foundation::Collections::IVector<winrt::Windows::Xbox::Storage::ContainerInfo2>
+        containerInfoVector = winrt::single_threaded_vector<winrt::Windows::Xbox::Storage::ContainerInfo2>();
 
     winrt::hstring storagePath = m_storagePath;
     auto storageFolder = co_await winrt::Windows::Storage::StorageFolder::GetFolderFromPathAsync(storagePath);
@@ -132,12 +136,11 @@ winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collecti
     for (auto folder : folders)
     {
         auto folderProperties = co_await folder.GetBasicPropertiesAsync();
-
         uint64_t size = folderProperties.Size();
         winrt::Windows::Foundation::DateTime date = folderProperties.DateModified();
 
         winrt::hstring displayName = {};
-        if (co_await DoesFileExist(folder, L"DisplayName.tx"))
+        if (co_await DoesFileExist(folder, L"DisplayName.txt")) // FIXED: .tx -> .txt
         {
             auto file = co_await folder.GetFileAsync(L"DisplayName.txt");
             displayName = co_await winrt::Windows::Storage::FileIO::ReadTextAsync(file);
@@ -148,12 +151,16 @@ winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collecti
 
         containerInfoVector.Append({folder.Name(), size, displayName, date, false});
     }
+    co_await winrt::resume_background();
     co_return containerInfoVector.GetView();
 }
 
-winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVectorView<winrt::Windows::Xbox::Storage::ContainerInfo>> wd::WinRT::ConnectedStorage::GetContainerInfoAsync()
+winrt::Windows::Foundation::IAsyncOperation<
+    winrt::Windows::Foundation::Collections::IVectorView<winrt::Windows::Xbox::Storage::ContainerInfo>>
+wd::WinRT::ConnectedStorage::GetContainerInfoAsync()
 {
-    winrt::Windows::Foundation::Collections::IVector<winrt::Windows::Xbox::Storage::ContainerInfo> containerInfoVector = winrt::single_threaded_vector<winrt::Windows::Xbox::Storage::ContainerInfo>();
+    winrt::Windows::Foundation::Collections::IVector<winrt::Windows::Xbox::Storage::ContainerInfo> containerInfoVector =
+        winrt::single_threaded_vector<winrt::Windows::Xbox::Storage::ContainerInfo>();
 
     winrt::hstring storagePath = m_storagePath;
     auto storageFolder = co_await winrt::Windows::Storage::StorageFolder::GetFolderFromPathAsync(storagePath);
@@ -162,12 +169,11 @@ winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collecti
     for (auto folder : folders)
     {
         auto folderProperties = co_await folder.GetBasicPropertiesAsync();
-
         uint64_t size = folderProperties.Size();
         winrt::Windows::Foundation::DateTime date = folderProperties.DateModified();
 
         winrt::hstring displayName = {};
-        if (co_await DoesFileExist(folder, L"DisplayName.tx"))
+        if (co_await DoesFileExist(folder, L"DisplayName.txt")) // FIXED: .tx -> .txt
         {
             auto file = co_await folder.GetFileAsync(L"DisplayName.txt");
             displayName = co_await winrt::Windows::Storage::FileIO::ReadTextAsync(file);
@@ -178,6 +184,7 @@ winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collecti
 
         containerInfoVector.Append({folder.Name()});
     }
+    co_await winrt::resume_background();
     co_return containerInfoVector.GetView();
 }
 
@@ -251,7 +258,8 @@ winrt::Windows::Foundation::IAsyncOperation<bool> wd::WinRT::ConnectedStorage::D
 
 winrt::hstring wd::WinRT::ConnectedStorage::ObtainPackageName()
 {
-    return winrt::Windows::ApplicationModel::Package::Current().Id().FamilyName();
+    // Return a hardcoded string so Win32 execution can safely create save directories!
+    return L"Microsoft.Anthem_8wekyb3d8bbwe";
 }
 
 winrt::Windows::Foundation::IAsyncAction wd::WinRT::ConnectedStorage::InitializeStorage(const wchar_t *name)

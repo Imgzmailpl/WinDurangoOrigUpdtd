@@ -1,2 +1,3 @@
 EXPORTS
-GetActivationFactory = WINRT_GetActivationFactory   PRIVATE
+DllGetActivationFactory = ActivationFactory PRIVATE
+GetActivationFactory = ActivationFactory PRIVATE

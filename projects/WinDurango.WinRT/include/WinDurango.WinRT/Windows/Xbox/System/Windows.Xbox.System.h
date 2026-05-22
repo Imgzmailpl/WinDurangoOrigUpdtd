@@ -1,44 +1,59 @@
 #pragma once
+#include "Windows.Xbox.System.GetPictureResult.g.h"
 #include "Windows.Xbox.System.GetTokenAndSignatureResult.g.h"
 #include "Windows.Xbox.System.OnlineStateChangedEventArgs.g.h"
-#include "Windows.Xbox.System.GetPictureResult.g.h"
 #include "Windows.Xbox.System.SignInCompletedEventArgs.g.h"
-#include "Windows.Xbox.System.SignOutStartedEventArgs.g.h"
 #include "Windows.Xbox.System.SignOutCompletedEventArgs.g.h"
 #include "Windows.Xbox.System.SignOutDeferral.g.h"
+#include "Windows.Xbox.System.SignOutStartedEventArgs.g.h"
 
 namespace winrt::Windows::Xbox::System::implementation
 {
     struct GetTokenAndSignatureResult : GetTokenAndSignatureResultT<GetTokenAndSignatureResult>
     {
-        GetTokenAndSignatureResult() = default;
-        GetTokenAndSignatureResult(hstring signature, hstring token) : signature(signature), token(token) {}
+        GetTokenAndSignatureResult() : signature(L"AAAAA_Mock_Signature_AAAAA"), token(L"XBL3.0 x=12345678;dummy_token")
+        {
+        }
+
+        GetTokenAndSignatureResult(hstring signature, hstring token)
+        {
+            this->signature = signature.empty() ? L"AAAAA_Mock_Signature_AAAAA" : signature;
+            this->token = token.empty() ? L"XBL3.0 x=12345678;dummy_token" : token;
+        }
 
         hstring Signature();
         hstring Token();
-    private:
-        hstring signature = L"0";
-        hstring token = L"0";
+
+      private:
+        hstring signature;
+        hstring token;
     };
 
     struct OnlineStateChangedEventArgs : OnlineStateChangedEventArgsT<OnlineStateChangedEventArgs>
     {
         OnlineStateChangedEventArgs() = default;
-        OnlineStateChangedEventArgs(winrt::Windows::Xbox::System::UserOnlineState state) : state(state) {}
+        OnlineStateChangedEventArgs(winrt::Windows::Xbox::System::UserOnlineState state) : state(state)
+        {
+        }
 
         winrt::Windows::Xbox::System::UserOnlineState State();
-    private:
+
+      private:
         winrt::Windows::Xbox::System::UserOnlineState state = winrt::Windows::Xbox::System::UserOnlineState::Offline;
     };
 
     struct GetPictureResult : GetPictureResultT<GetPictureResult>
     {
         GetPictureResult() = default;
-        GetPictureResult(winrt::hresult result, uint32_t requiredBufferSize) : result(result), bufferSize(requiredBufferSize) {}
+        GetPictureResult(winrt::hresult result, uint32_t requiredBufferSize)
+            : result(result), bufferSize(requiredBufferSize)
+        {
+        }
 
         winrt::hresult Result();
         uint32_t RequiredBufferSize();
-    private:
+
+      private:
         winrt::hresult result = 0;
         uint32_t bufferSize = 0;
     };
@@ -46,22 +61,29 @@ namespace winrt::Windows::Xbox::System::implementation
     struct SignInCompletedEventArgs : SignInCompletedEventArgsT<SignInCompletedEventArgs>
     {
         SignInCompletedEventArgs() = default;
-        SignInCompletedEventArgs(winrt::Windows::Xbox::System::User user) : user(user) {}
+        SignInCompletedEventArgs(winrt::Windows::Xbox::System::User user) : user(user)
+        {
+        }
 
         winrt::Windows::Xbox::System::User User();
-    private:
+
+      private:
         winrt::Windows::Xbox::System::User user;
     };
 
     struct SignOutStartedEventArgs : SignOutStartedEventArgsT<SignOutStartedEventArgs>
     {
         SignOutStartedEventArgs() = default;
-        SignOutStartedEventArgs(winrt::Windows::Xbox::System::SignOutDeferral deferral, winrt::Windows::Xbox::System::User user)
-            : deferral(deferral), user(user) {}
+        SignOutStartedEventArgs(winrt::Windows::Xbox::System::SignOutDeferral deferral,
+                                winrt::Windows::Xbox::System::User user)
+            : deferral(deferral), user(user)
+        {
+        }
 
         winrt::Windows::Xbox::System::SignOutDeferral GetDeferral();
         winrt::Windows::Xbox::System::User User();
-    private:
+
+      private:
         winrt::Windows::Xbox::System::SignOutDeferral deferral;
         winrt::Windows::Xbox::System::User user;
     };
@@ -69,11 +91,15 @@ namespace winrt::Windows::Xbox::System::implementation
     struct SignOutCompletedEventArgs : SignOutCompletedEventArgsT<SignOutCompletedEventArgs>
     {
         SignOutCompletedEventArgs() = default;
-        SignOutCompletedEventArgs(winrt::hresult result, winrt::Windows::Xbox::System::User user) : result(result), user(user) {}
+        SignOutCompletedEventArgs(winrt::hresult result, winrt::Windows::Xbox::System::User user)
+            : result(result), user(user)
+        {
+        }
 
         winrt::hresult Result();
         winrt::Windows::Xbox::System::User User();
-    private:
+
+      private:
         winrt::hresult result;
         winrt::Windows::Xbox::System::User user;
     };
@@ -84,4 +110,4 @@ namespace winrt::Windows::Xbox::System::implementation
 
         void Complete();
     };
-}
+} // namespace winrt::Windows::Xbox::System::implementation

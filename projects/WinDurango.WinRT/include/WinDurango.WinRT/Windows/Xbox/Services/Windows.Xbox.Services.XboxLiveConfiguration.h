@@ -11,11 +11,11 @@ namespace winrt::Windows::Xbox::Services::implementation
         static hstring PrimaryServiceConfigId();
         static hstring SandboxId();
     };
-}
+} // namespace winrt::Windows::Xbox::Services::implementation
 
 namespace winrt::Windows::Xbox::Services::factory_implementation
 {
     struct XboxLiveConfiguration : XboxLiveConfigurationT<XboxLiveConfiguration, implementation::XboxLiveConfiguration>
     {
     };
-}
+} // namespace winrt::Windows::Xbox::Services::factory_implementation

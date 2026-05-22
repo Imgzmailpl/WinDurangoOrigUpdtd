@@ -1,39 +1,46 @@
 #pragma once
-#include <winrt/Windows.Foundation.Collections.h>
-#include <Xinput.h>
 #include "Windows.Xbox.Input.Gamepad.g.h"
 #include "Windows.Xbox.Input.GamepadAddedEventArgs.g.h"
-#include "Windows.Xbox.Input.GamepadRemovedEventArgs.g.h"
 #include "Windows.Xbox.Input.GamepadReading.g.h"
+#include "Windows.Xbox.Input.GamepadRemovedEventArgs.g.h"
 #include "Windows.Xbox.System.User.h"
+#include <Xinput.h>
+#include <winrt/Windows.Foundation.Collections.h>
 
 namespace winrt::Windows::Xbox::Input::implementation
 {
     struct GamepadAddedEventArgs : GamepadAddedEventArgsT<GamepadAddedEventArgs>
     {
         GamepadAddedEventArgs() = default;
-        GamepadAddedEventArgs(winrt::Windows::Xbox::Input::Gamepad gamepad) : gamepad(gamepad) {} 
+        GamepadAddedEventArgs(winrt::Windows::Xbox::Input::Gamepad gamepad) : gamepad(gamepad)
+        {
+        }
 
         winrt::Windows::Xbox::Input::Gamepad Gamepad();
-    private:
+
+      private:
         winrt::Windows::Xbox::Input::Gamepad gamepad;
     };
 
     struct GamepadRemovedEventArgs : GamepadRemovedEventArgsT<GamepadRemovedEventArgs>
     {
         GamepadRemovedEventArgs() = default;
-        GamepadRemovedEventArgs(winrt::Windows::Xbox::Input::Gamepad gamepad) : gamepad(gamepad) {} 
+        GamepadRemovedEventArgs(winrt::Windows::Xbox::Input::Gamepad gamepad) : gamepad(gamepad)
+        {
+        }
 
         winrt::Windows::Xbox::Input::Gamepad Gamepad();
-    private:
+
+      private:
         winrt::Windows::Xbox::Input::Gamepad gamepad;
     };
-    
+
     struct GamepadReading : GamepadReadingT<GamepadReading>
     {
         GamepadReading() = default;
-        GamepadReading(winrt::Windows::Xbox::Input::RawGamepadReading reading)
-            : reading(reading) {}
+        GamepadReading(XINPUT_GAMEPAD gp) : x_gamepad(gp)
+        {
+        }
 
         winrt::Windows::Foundation::DateTime Timestamp();
         winrt::Windows::Xbox::Input::GamepadButtons Buttons();
@@ -57,40 +64,51 @@ namespace winrt::Windows::Xbox::Input::implementation
         float LeftThumbstickY();
         float RightThumbstickX();
         float RightThumbstickY();
-    private:
+
+      private:
         winrt::Windows::Foundation::DateTime time;
-        winrt::Windows::Xbox::Input::RawGamepadReading reading;
+        XINPUT_GAMEPAD x_gamepad = {};
     };
 
     struct Gamepad : GamepadT<Gamepad>
     {
         Gamepad() = default;
-        Gamepad(uint64_t id, bool gamepad) : id(id) {}
+        Gamepad(uint64_t id, bool gamepad) : id(id), gamepad(gamepad)
+        {
+        }
 
         static winrt::Windows::Foundation::Collections::IVectorView<winrt::Windows::Xbox::Input::IGamepad> Gamepads();
-        static winrt::event_token GamepadAdded(winrt::Windows::Foundation::EventHandler<winrt::Windows::Xbox::Input::GamepadAddedEventArgs> const& handler);
-        static void GamepadAdded(winrt::event_token const& token) noexcept;
-        static winrt::event_token GamepadRemoved(winrt::Windows::Foundation::EventHandler<winrt::Windows::Xbox::Input::GamepadRemovedEventArgs> const& handler);
-        static void GamepadRemoved(winrt::event_token const& token) noexcept;
+        static winrt::event_token GamepadAdded(
+            winrt::Windows::Foundation::EventHandler<::winrt::Windows::Xbox::Input::GamepadAddedEventArgs> const
+                &handler);
+        static void GamepadAdded(winrt::event_token const &token) noexcept;
+        static winrt::event_token GamepadRemoved(
+            winrt::Windows::Foundation::EventHandler<::winrt::Windows::Xbox::Input::GamepadRemovedEventArgs> const
+                &handler);
+        static void GamepadRemoved(winrt::event_token const &token) noexcept;
         uint64_t Id();
         hstring Type();
         winrt::Windows::Xbox::System::User User();
         winrt::Windows::Xbox::Input::INavigationReading GetNavigationReading();
         winrt::Windows::Xbox::Input::RawNavigationReading GetRawNavigationReading();
-        void SetVibration(winrt::Windows::Xbox::Input::GamepadVibration const& value);
+        void SetVibration(winrt::Windows::Xbox::Input::GamepadVibration const &value);
         winrt::Windows::Xbox::Input::GamepadReading GetCurrentReading();
         winrt::Windows::Xbox::Input::RawGamepadReading GetRawCurrentReading();
-    private:
+
+      private:
         uint64_t id = 0;
         bool gamepad = false;
-        static winrt::event<winrt::Windows::Foundation::EventHandler<winrt::Windows::Xbox::Input::GamepadAddedEventArgs>> e_GamepadAdded;
-        static winrt::event<winrt::Windows::Foundation::EventHandler<winrt::Windows::Xbox::Input::GamepadRemovedEventArgs>> e_GamepadRemoved;
-        static winrt::Windows::Foundation::Collections::IVector<winrt::Windows::Xbox::Input::IGamepad> a_gamepads;
+        static winrt::event<
+            winrt::Windows::Foundation::EventHandler<::winrt::Windows::Xbox::Input::GamepadAddedEventArgs>>
+            e_GamepadAdded;
+        static winrt::event<
+            winrt::Windows::Foundation::EventHandler<::winrt::Windows::Xbox::Input::GamepadRemovedEventArgs>>
+            e_GamepadRemoved;
     };
-}
+} // namespace winrt::Windows::Xbox::Input::implementation
 namespace winrt::Windows::Xbox::Input::factory_implementation
 {
     struct Gamepad : GamepadT<Gamepad, implementation::Gamepad>
     {
     };
-}
+} // namespace winrt::Windows::Xbox::Input::factory_implementation

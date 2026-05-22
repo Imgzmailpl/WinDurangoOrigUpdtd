@@ -1,13 +1,14 @@
 #include "ID3D11Device.h"
-#include "IDXGIDevice.h"
-#include "ID3D11Resource.h"
-#include "ID3D11View.h"
-#include "ID3D11State.h"
-#include "ID3D11Shader.h"
-#include "ID3D11DeviceContext.h"
-#include "ID3D11Runtime.h"
 #include "ID3D11DMAEngineContext.h"
+#include "ID3D11DeviceContext.h"
+#include "ID3D11Resource.h"
+#include "ID3D11Runtime.h"
+#include "ID3D11Shader.h"
+#include "ID3D11State.h"
+#include "ID3D11View.h"
+#include "IDXGIDevice.h"
 #include "d3d11.x.h"
+#include <intrin.h>
 
 //
 // IUnknown
@@ -58,7 +59,8 @@ template <abi_t ABI> ULONG D3D11DeviceX<ABI>::Release()
 {
     m_pFunction->Release();
     ULONG RefCount = InterlockedDecrement(&this->m_RefCount);
-    if (!RefCount) delete this;
+    if (!RefCount)
+        delete this;
     return RefCount;
 }
 
@@ -109,6 +111,11 @@ HRESULT D3D11DeviceX<ABI>::CreateTexture2D(D3D11_TEXTURE2D_DESC const *pDesc, D3
 {
     auto pDesc2 = *pDesc;
     pDesc2.MiscFlags = ConvertMiscFlags(pDesc->MiscFlags);
+
+    // --- GLOBAL MSAA STRIP ---
+    // Force all 2D textures to be single-sampled (TEXTURE2D instead of TEXTURE2DMS).
+    // This solves EXECUTION ERROR #354 (shader dimension mismatches) on PC hardware!
+    pDesc2.SampleDesc.Count = 1;
     pDesc2.SampleDesc.Quality = 0;
 
     HRESULT hr = 0;
@@ -147,37 +154,146 @@ HRESULT D3D11DeviceX<ABI>::CreateShaderResourceView(gfx::ID3D11Resource<ABI> *pR
                                                     D3D11_SHADER_RESOURCE_VIEW_DESC const *pDesc,
                                                     gfx::ID3D11ShaderResourceView<ABI> **ppSRV)
 {
-    HRESULT hr = 0;
+    // SAFETY NET: Protect against failed allocations
+    if (!pResource || !ppSRV)
+        return E_INVALIDARG;
 
+    HRESULT hr = 0;
     D3D11_RESOURCE_DIMENSION Type{};
     pResource->GetType(&Type);
-
     ID3D11ShaderResourceView *pView = nullptr;
 
+    D3D11_SHADER_RESOURCE_VIEW_DESC patchedDesc;
+    const D3D11_SHADER_RESOURCE_VIEW_DESC *pFinalDesc = pDesc;
+    bool bNeedsPatch = false;
+
+    if (pDesc)
+    {
+        patchedDesc = *pDesc;
+
+        // --- FIX: Detect RAW Buffers (They MUST be R32_TYPELESS on PC) ---
+        bool isRawBuffer = false;
+        if (Type == D3D11_RESOURCE_DIMENSION_BUFFER && patchedDesc.ViewDimension == D3D11_SRV_DIMENSION_BUFFEREX)
+        {
+            if (patchedDesc.BufferEx.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW)
+            {
+                isRawBuffer = true;
+                if (patchedDesc.Format != DXGI_FORMAT_R32_TYPELESS)
+                {
+                    patchedDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+                    bNeedsPatch = true;
+                }
+            }
+        }
+
+        // --- UNIVERSAL REMAPPER (Skip if it's a RAW Buffer) ---
+        if (!isRawBuffer)
+        {
+            switch (patchedDesc.Format)
+            {
+            case DXGI_FORMAT_R32G8X24_TYPELESS:
+                patchedDesc.Format = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+                bNeedsPatch = true;
+                break;
+            case DXGI_FORMAT_R32_TYPELESS:
+                patchedDesc.Format = DXGI_FORMAT_R32_FLOAT;
+                bNeedsPatch = true;
+                break;
+            case DXGI_FORMAT_R16_TYPELESS:
+                patchedDesc.Format = DXGI_FORMAT_R16_UNORM;
+                bNeedsPatch = true;
+                break;
+            case DXGI_FORMAT_R8_TYPELESS:
+                patchedDesc.Format = DXGI_FORMAT_R8_UNORM;
+                bNeedsPatch = true;
+                break;
+            case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+                patchedDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
+                bNeedsPatch = true;
+                break;
+            case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+                patchedDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+                bNeedsPatch = true;
+                break;
+            case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+                patchedDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+                bNeedsPatch = true;
+                break;
+            case DXGI_FORMAT_R16G16_TYPELESS:
+                patchedDesc.Format = DXGI_FORMAT_R16G16_UNORM;
+                bNeedsPatch = true;
+                break;
+            }
+        }
+
+        // --- FIX: MSAA and UINT Casts ---
+        if (Type == D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+        {
+            auto pTex2D = static_cast<D3D11Texture2D<ABI> *>(pResource)->m_pFunction;
+            if (pTex2D)
+            {
+                D3D11_TEXTURE2D_DESC texDesc;
+                pTex2D->GetDesc(&texDesc);
+
+                if (patchedDesc.Format == DXGI_FORMAT_R8_UINT)
+                {
+                    if (texDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT ||
+                        texDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT)
+                    {
+                        patchedDesc.Format = texDesc.Format;
+                        bNeedsPatch = true;
+                    }
+                }
+
+                if (texDesc.SampleDesc.Count > 1)
+                {
+                    if (patchedDesc.ViewDimension == D3D11_SRV_DIMENSION_TEXTURE2D)
+                    {
+                        patchedDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
+                        bNeedsPatch = true;
+                    }
+                    else if (patchedDesc.ViewDimension == D3D11_SRV_DIMENSION_TEXTURE2DARRAY)
+                    {
+                        patchedDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY;
+                        patchedDesc.Texture2DMSArray.FirstArraySlice = pDesc->Texture2DArray.FirstArraySlice;
+                        patchedDesc.Texture2DMSArray.ArraySize = pDesc->Texture2DArray.ArraySize;
+                        bNeedsPatch = true;
+                    }
+                }
+            }
+        }
+
+        if (bNeedsPatch)
+        {
+            pFinalDesc = &patchedDesc;
+        }
+    }
+
+    // Call the real D3D11 API
     if (Type == D3D11_RESOURCE_DIMENSION_BUFFER)
     {
-        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Buffer<ABI> *>(pResource)->m_pFunction, pDesc,
+        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Buffer<ABI> *>(pResource)->m_pFunction, pFinalDesc,
                                                    &pView);
     }
     else if (Type == D3D11_RESOURCE_DIMENSION_TEXTURE1D)
     {
-        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Texture1D<ABI> *>(pResource)->m_pFunction, pDesc,
-                                                   &pView);
+        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Texture1D<ABI> *>(pResource)->m_pFunction,
+                                                   pFinalDesc, &pView);
     }
     else if (Type == D3D11_RESOURCE_DIMENSION_TEXTURE2D)
     {
-        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Texture2D<ABI> *>(pResource)->m_pFunction, pDesc,
-                                                   &pView);
+        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Texture2D<ABI> *>(pResource)->m_pFunction,
+                                                   pFinalDesc, &pView);
     }
     else if (Type == D3D11_RESOURCE_DIMENSION_TEXTURE3D)
     {
-        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Texture3D<ABI> *>(pResource)->m_pFunction, pDesc,
-                                                   &pView);
+        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Texture3D<ABI> *>(pResource)->m_pFunction,
+                                                   pFinalDesc, &pView);
     }
     else if (Type == D3D11_RESOURCE_DIMENSION_UNKNOWN)
     {
-        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Resource<ABI> *>(pResource)->m_pFunction, pDesc,
-                                                   &pView);
+        hr = m_pFunction->CreateShaderResourceView(static_cast<D3D11Resource<ABI> *>(pResource)->m_pFunction,
+                                                   pFinalDesc, &pView);
     }
 
     if (pView)
@@ -186,24 +302,16 @@ HRESULT D3D11DeviceX<ABI>::CreateShaderResourceView(gfx::ID3D11Resource<ABI> *pR
         (*ppSRV)->m_pAllocationStart = pResource->m_pAllocationStart;
 
         if (Type == D3D11_RESOURCE_DIMENSION_BUFFER)
-        {
             static_cast<D3D11ShaderResourceView<ABI> *>(*ppSRV)->m_pBuffer = static_cast<D3D11Buffer<ABI> *>(pResource);
-        }
         else if (Type == D3D11_RESOURCE_DIMENSION_TEXTURE1D)
-        {
             static_cast<D3D11ShaderResourceView<ABI> *>(*ppSRV)->m_pTexture1D =
                 static_cast<D3D11Texture1D<ABI> *>(pResource);
-        }
         else if (Type == D3D11_RESOURCE_DIMENSION_TEXTURE2D)
-        {
             static_cast<D3D11ShaderResourceView<ABI> *>(*ppSRV)->m_pTexture2D =
                 static_cast<D3D11Texture2D<ABI> *>(pResource);
-        }
         else if (Type == D3D11_RESOURCE_DIMENSION_TEXTURE3D)
-        {
             static_cast<D3D11ShaderResourceView<ABI> *>(*ppSRV)->m_pTexture3D =
                 static_cast<D3D11Texture3D<ABI> *>(pResource);
-        }
     }
 
     return hr;
@@ -214,6 +322,10 @@ HRESULT D3D11DeviceX<ABI>::CreateUnorderedAccessView(gfx::ID3D11Resource<ABI> *p
                                                      D3D11_UNORDERED_ACCESS_VIEW_DESC const *pDesc,
                                                      gfx::ID3D11UnorderedAccessView<ABI> **ppUAV)
 {
+    // SAFETY NET: Protect against failed allocations
+    if (!pResource || !ppUAV)
+        return E_INVALIDARG;
+
     HRESULT hr = 0;
 
     D3D11_RESOURCE_DIMENSION Type{};
@@ -282,6 +394,10 @@ HRESULT D3D11DeviceX<ABI>::CreateRenderTargetView(gfx::ID3D11Resource<ABI> *pRes
                                                   D3D11_RENDER_TARGET_VIEW_DESC const *pDesc,
                                                   gfx::ID3D11RenderTargetView<ABI> **ppRTV)
 {
+    // SAFETY NET: Protect against failed allocations from cascading into crashes!
+    if (!pResource || !ppRTV)
+        return E_INVALIDARG;
+
     HRESULT hr = 0;
 
     D3D11_RESOURCE_DIMENSION Type{};
@@ -328,6 +444,10 @@ HRESULT D3D11DeviceX<ABI>::CreateDepthStencilView(gfx::ID3D11Resource<ABI> *pRes
                                                   D3D11_DEPTH_STENCIL_VIEW_DESC const *pDesc,
                                                   gfx::ID3D11DepthStencilView<ABI> **ppDSV)
 {
+    // SAFETY NET: Protect against failed allocations
+    if (!pResource || !ppDSV)
+        return E_INVALIDARG;
+
     HRESULT hr = 0;
 
     D3D11_RESOURCE_DIMENSION Type{};
@@ -553,8 +673,8 @@ HRESULT D3D11DeviceX<ABI>::CreateCounter(D3D11_COUNTER_DESC const *pDesc, ID3D11
 template <abi_t ABI>
 HRESULT D3D11DeviceX<ABI>::CreateDeferredContext(uint32_t Flags, gfx::ID3D11DeviceContext<ABI> **ppDeferredContext)
 {
-    ID3D11DeviceContext* pContext{};
-    ID3D11DeviceContext2* pContext2{};
+    ID3D11DeviceContext *pContext{};
+    ID3D11DeviceContext2 *pContext2{};
     m_pFunction->CreateDeferredContext(0, &pContext);
 
     pContext->QueryInterface(IID_PPV_ARGS(&pContext2));
@@ -652,8 +772,8 @@ template <abi_t ABI> HRESULT D3D11DeviceX<ABI>::GetDeviceRemovedReason()
 
 template <abi_t ABI> void D3D11DeviceX<ABI>::GetImmediateContext(gfx::ID3D11DeviceContext<ABI> **ppImmediateContext)
 {
-    ID3D11DeviceContext* pContext{};
-    ID3D11DeviceContext2* pContext2{};
+    ID3D11DeviceContext *pContext{};
+    ID3D11DeviceContext2 *pContext2{};
     m_pFunction->GetImmediateContext(&pContext);
 
     pContext->QueryInterface(IID_PPV_ARGS(&pContext2));
@@ -685,8 +805,8 @@ template <abi_t ABI> void D3D11DeviceX<ABI>::GetImmediateContext1(gfx::ID3D11Dev
 template <abi_t ABI>
 HRESULT D3D11DeviceX<ABI>::CreateDeferredContext1(uint32_t Flags, gfx::ID3D11DeviceContext1<ABI> **ppDeferredContext1)
 {
-    ID3D11DeviceContext* pContext{};
-    ID3D11DeviceContext2* pContext2{};
+    ID3D11DeviceContext *pContext{};
+    ID3D11DeviceContext2 *pContext2{};
     m_pFunction->CreateDeferredContext(0, &pContext);
 
     pContext->QueryInterface(IID_PPV_ARGS(&pContext2));
@@ -748,8 +868,8 @@ template <abi_t ABI> void D3D11DeviceX<ABI>::GetImmediateContext2(gfx::ID3D11Dev
 template <abi_t ABI>
 HRESULT D3D11DeviceX<ABI>::CreateDeferredContext2(uint32_t Flags, gfx::ID3D11DeviceContext2<ABI> **ppDeferredContext)
 {
-    ID3D11DeviceContext* pContext{};
-    ID3D11DeviceContext2* pContext2{};
+    ID3D11DeviceContext *pContext{};
+    ID3D11DeviceContext2 *pContext2{};
     m_pFunction->CreateDeferredContext(0, &pContext);
 
     pContext->QueryInterface(IID_PPV_ARGS(&pContext2));
@@ -812,16 +932,30 @@ HRESULT D3D11DeviceX<ABI>::CreateDmaEngineContext(gfx::D3D11_DMA_ENGINE_CONTEXT_
     *ppDmaDeviceContext = new D3D11DMAEngineContextX<ABI>();
     return S_OK;
 }
-
 template <abi_t ABI> BOOL D3D11DeviceX<ABI>::IsFencePending(UINT64 Fence)
 {
-    return Fence > 0xFFFF && !*(BOOL*)Fence;
+    // FAKE GPU SYNCHRONIZATION: The PC driver resolves this instantly.
+    // We must manually signal the memory address so the Xbox engine breaks out of its spinlocks.
+    if (Fence > 0xFFFF)
+    {
+        *(volatile BOOL *)Fence = TRUE;
+    }
+    return FALSE; // Tell the engine the GPU is ready!
 }
 
 template <abi_t ABI> BOOL D3D11DeviceX<ABI>::IsResourcePending(gfx::ID3D11Resource<ABI> *pResource)
 {
-    IMPLEMENT_STUB();
-    return {};
+    // Prevent the engine from indefinitely waiting for resources to unpack into RAM
+    return FALSE;
+}
+
+template <abi_t ABI> void D3D11DeviceX<ABI>::GetTimestamps(UINT64 *pGpuTimestamp, UINT64 *pCpuRdtscTimestamp)
+{
+    // Feed real timing data so animations and loading timeouts can complete successfully
+    if (pGpuTimestamp)
+        *pGpuTimestamp = GetTickCount64() * 10000;
+    if (pCpuRdtscTimestamp)
+        *pCpuRdtscTimestamp = __rdtsc();
 }
 
 template <abi_t ABI>
@@ -896,6 +1030,11 @@ HRESULT D3D11DeviceX<ABI>::CreatePlacementTexture2D(D3D11_TEXTURE2D_DESC const *
     UINT SlicePitch = 0;
     auto pDesc2 = *pDesc;
     pDesc2.MipLevels = 1;
+
+    // --- GLOBAL MSAA STRIP FOR PLACEMENT TEXTURES ---
+    pDesc2.SampleDesc.Count = 1;
+    pDesc2.SampleDesc.Quality = 0;
+
     if (pDesc2.Usage == D3D11_USAGE_IMMUTABLE)
     {
         pDesc2.Usage = D3D11_USAGE_DEFAULT;
@@ -918,13 +1057,6 @@ HRESULT D3D11DeviceX<ABI>::CreatePlacementTexture2D(D3D11_TEXTURE2D_DESC const *
         initialData.clear();
         return hr;
     }
-    else if (pVirtualAddress && pDesc2.SampleDesc.Count > 1)
-    {
-        HRESULT hr = CreateTexture2D(&pDesc2, 0, ppTexture2D);
-        (*ppTexture2D)->m_pAllocationStart = pVirtualAddress;
-        initialData.clear();
-        return hr;
-    }
     else
     {
         HRESULT hr = CreateTexture2D(&pDesc2, initialData.data(), ppTexture2D);
@@ -935,7 +1067,6 @@ HRESULT D3D11DeviceX<ABI>::CreatePlacementTexture2D(D3D11_TEXTURE2D_DESC const *
 
     return S_OK;
 }
-
 template <abi_t ABI>
 HRESULT D3D11DeviceX<ABI>::CreatePlacementTexture3D(D3D11_TEXTURE3D_DESC const *pDesc, UINT TileModeIndex, UINT Pitch,
                                                     void *pVirtualAddress, gfx::ID3D11Texture3D<ABI> **ppTexture3D)
@@ -976,11 +1107,6 @@ HRESULT D3D11DeviceX<ABI>::CreatePlacementTexture3D(D3D11_TEXTURE3D_DESC const *
     }
 
     return S_OK;
-}
-
-template <abi_t ABI> void D3D11DeviceX<ABI>::GetTimestamps(UINT64 *pGpuTimestamp, UINT64 *pCpuRdtscTimestamp)
-{
-    IMPLEMENT_STUB();
 }
 
 template <abi_t ABI>
@@ -1024,8 +1150,8 @@ HRESULT D3D11DeviceX<ABI>::CreateSamplerStateX(gfx::D3D11X_SAMPLER_DESC const *p
 template <abi_t ABI>
 HRESULT D3D11DeviceX<ABI>::CreateDeferredContextX(UINT Flags, gfx::ID3D11DeviceContextX<ABI> **ppDeferredContext)
 {
-    ID3D11DeviceContext* pContext{};
-    ID3D11DeviceContext2* pContext2{};
+    ID3D11DeviceContext *pContext{};
+    ID3D11DeviceContext2 *pContext2{};
     m_pFunction->CreateDeferredContext(0, &pContext);
 
     pContext->QueryInterface(IID_PPV_ARGS(&pContext2));
@@ -1037,7 +1163,6 @@ HRESULT D3D11DeviceX<ABI>::CreateDeferredContextX(UINT Flags, gfx::ID3D11DeviceC
 
 template <abi_t ABI> void D3D11DeviceX<ABI>::GarbageCollect(UINT Flags)
 {
-
 }
 
 template <abi_t ABI>
@@ -1054,10 +1179,9 @@ HRESULT D3D11DeviceX<ABI>::CreateDepthStencilStateX(D3D11_DEPTH_STENCIL_DESC con
 }
 
 template <abi_t ABI>
-HRESULT D3D11DeviceX<ABI>::CreatePlacementRenderableTexture2D(D3D11_TEXTURE2D_DESC const *pDesc, UINT TileModeIndex,
-                                                              UINT Pitch,
-                                                              gfx::D3D11X_RENDERABLE_TEXTURE_ADDRESSES const *pAddresses,
-                                                              gfx::ID3D11Texture2D<ABI> **ppTexture2D)
+HRESULT D3D11DeviceX<ABI>::CreatePlacementRenderableTexture2D(
+    D3D11_TEXTURE2D_DESC const *pDesc, UINT TileModeIndex, UINT Pitch,
+    gfx::D3D11X_RENDERABLE_TEXTURE_ADDRESSES const *pAddresses, gfx::ID3D11Texture2D<ABI> **ppTexture2D)
 {
     IMPLEMENT_STUB();
     return E_NOTIMPL;

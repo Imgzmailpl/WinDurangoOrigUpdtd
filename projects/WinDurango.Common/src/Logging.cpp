@@ -7,11 +7,32 @@ void wd::common::Logging::Initialize()
         std::cout << "[WinDurango::Common::Logging.Initialize] - Critical: Logging isn't Constructed\n";
         return;
     }
+
+    std::string logFilePath = "WinDurango.log";
+    if (pFile)
+    {
+        try
+        {
+            pFile->open();
+            logFilePath = pFile->fullfilepath().string();
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "[WinDurango::Common::Logging.Initialize] - Warning: pFile->open() failed: " << e.what()
+                      << "\n";
+        }
+    }
+    else
+    {
+        std::cout
+            << "[WinDurango::Common::Logging.Initialize] - Warning: pFile is nullptr. Defaulting log destination to "
+            << logFilePath << "\n";
+    }
+
     try
     {
-        pFile->open();
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(pFile->fullfilepath().string(), true);
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath, true);
 
         console_sink->set_pattern("[%n] [%H:%M:%S] [thread %t] - %^%l%$: %v");
         file_sink->set_pattern("[%n] [%H:%M:%S] [thread %t] - %^%l%$: %v");
@@ -21,7 +42,7 @@ void wd::common::Logging::Initialize()
 
         log["WinDurango"] = logg;
         log["WinDurango"]->set_pattern("[%n] [%H:%M:%S] [thread %t] - %^%l%$: %v");
-        log["WinDurango"]->info("Setting Log File: {}", pFile->fullfilepath().string());
+        log["WinDurango"]->info("Setting Log File: {}", logFilePath);
         log["WinDurango"]->flush_on(spdlog::level::info);
         isInitialized = true;
     }
@@ -43,13 +64,20 @@ void wd::common::Logging::AddLogger(std::string codespace)
 {
     if (!isInitialized)
     {
-        std::cout << "[WinDurango::Common::Logging.Initialize] - Critical: Logging isn't Initiailized\n";
+        std::cout << "[WinDurango::Common::Logging.AddLogger] - Critical: Logging isn't Initialized\n";
         return;
     }
+
+    std::string logFilePath = "WinDurango.log";
+    if (pFile)
+    {
+        logFilePath = pFile->fullfilepath().string();
+    }
+
     try
     {
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(pFile->fullfilepath().string(), true);
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath, true);
 
         console_sink->set_pattern("[%n] [%H:%M:%S] [thread %t] - %^%l%$: %v");
         file_sink->set_pattern("[%n] [%H:%M:%S] [thread %t] - %^%l%$: %v");
